@@ -1,0 +1,158 @@
+---
+- name: Delete snapshot test for https://bugzilla.redhat.com/1796415
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    variables.yml
+  vars:
+    debug_vm_create: true
+    wait_for_ip: true
+    vm_infra_wait_for_ip_retries: 30
+    vm_infra_create_poll_interval: 5
+    engine_fqdn: "{{ engine_fqdn  }}"
+    engine_user: "{{ engine_user }}"
+    engine_cafile: "{{ engine_cafile }}"
+    engine_password: "{{ engine_password }}"
+
+    vm_profile01:
+      cluster: "{{ cluster_name }}"
+      state: running
+      template: "{{ template_name }}"
+      clone: false
+      memory: 2GiB
+      cores: 2
+      disks:
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-01
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-02
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-03
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-04
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-05
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-06
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-07
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-08
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-09
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-10
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-11
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-12
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-13
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-14
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-15
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: "{{ vm_disk_size }}"
+          format: cow
+          name: disk-16
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+    vms:
+      - name: delete-snapshot-vm1
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+
+  roles:
+    - vm_infra
+  collections:
+    - ovirt.ovirt
+
+- name: Create snapshot
+  hosts: ovirt_tag_vm_profile01
+  vars_files:
+    variables.yml
+  vars:
+    ansible_ssh_user: "{{ vm_ssh_user }}"
+    ansible_ssh_pass: "{{ vm_ssh_password }}"
+  tasks:
+    - name: Obtain SSO token with using username/password credentials
+      ovirt.ovirt.ovirt_auth:
+        url: https://{{engine_fqdn}}/ovirt-engine/api
+        username: "{{ engine_user }}"
+        insecure: true
+        ca_file: "{{ engine_cafile }}"
+        password: "{{ engine_password }}"
+      delegate_to: localhost
+
+    - name: Create snapshots 1
+      ovirt.ovirt.ovirt_snapshot:
+        auth: "{{ ovirt_auth }}"
+        vm_name: "{{ inventory_hostname }}"
+        description: snap1
+        use_memory: false
+        timeout: 900
+      delegate_to: localhost
+      register: snapshot
+
+    - name: "Write data to all disks to ensure merge will fail without extending base volume"
+      shell: |
+        for disk in /dev/vd*; do
+            dd if=/dev/zero bs=1M count=2048 of=$disk oflag=direct conv=fsync &
+        done
+        wait
+
+    - name: Remove snapshot 1
+      ovirt.ovirt.ovirt_snapshot:
+        auth: "{{ ovirt_auth }}"
+        state: absent
+        vm_name: "{{ inventory_hostname }}"
+        snapshot_id: "{{ snapshot.id }}"
+        timeout: 900
+      delegate_to: localhost

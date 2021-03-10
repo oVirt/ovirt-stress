@@ -26,26 +26,42 @@
       host: "{{ vm_host }}"
       placement_policy: pinned
       disks:
-        - size: "{{ vm_disk_size }}"
+        # Data disks - we write 2 GiB of data before the merge to ensure that
+        # base volume is extended before the commit.
+        - size: 3GiB
           format: cow
-          name: disk-01
+          name: data-01
           storage_domain: "{{ storage_domain }}"
           interface: virtio
-        - size: "{{ vm_disk_size }}"
+        - size: 3GiB
           format: cow
-          name: disk-02
+          name: data-02
           storage_domain: "{{ storage_domain }}"
           interface: virtio
-        - size: "{{ vm_disk_size }}"
+        # Empty cow disks - will be extended during merge, but commit will be
+        # very quick since there is no data to commit.
+        - size: 2GiB
           format: cow
-          name: disk-03
+          name: empty-01
           storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
+          interface: virtio_scsi
+        - size: 2GiB
           format: cow
-          name: disk-04
+          name: empty-02
           storage_domain: "{{ storage_domain }}"
-          interface: virtio
+          interface: virtio_scsi
+        # Empty raw disks - these disks are not extended during the merge, and
+        # commit completes very quickly since there is no data to commit.
+        - size: 1GiB
+          format: raw
+          name: empty-03
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+        - size: 1GiB
+          format: raw
+          name: empty-04
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
     vms:
       - name: delete-snapshot-vm1
         tag: vm_profile01

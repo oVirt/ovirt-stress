@@ -46,31 +46,17 @@
           name: disk-04
           storage_domain: "{{ storage_domain }}"
           interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-05
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-06
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-07
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-08
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
     vms:
       - name: delete-snapshot-vm1
         tag: vm_profile01
         profile: "{{ vm_profile01 }}"
       - name: delete-snapshot-vm2
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+      - name: delete-snapshot-vm3
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+      - name: delete-snapshot-vm4
         tag: vm_profile01
         profile: "{{ vm_profile01 }}"
 

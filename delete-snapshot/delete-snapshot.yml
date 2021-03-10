@@ -139,7 +139,8 @@
         vm_name: "{{ inventory_hostname }}"
         description: snap1
         use_memory: false
-        timeout: 900
+        # Takes ~70 seconds on virtualized setup, should be much faster with real setup.
+        timeout: 130
       delegate_to: localhost
       register: snapshot
 
@@ -156,7 +157,8 @@
         state: absent
         vm_name: "{{ inventory_hostname }}"
         snapshot_id: "{{ snapshot.id }}"
-        timeout: 900
+        # Takes 330-390 seconds on virtualized setup, should be much faster with real setup.
+        timeout: 500
       delegate_to: localhost
       # If removing snapshot fails, we need to investigate it, but we want to
       # continue with cleanup, so we can run this test in a loop.

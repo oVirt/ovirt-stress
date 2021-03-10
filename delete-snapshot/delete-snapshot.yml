@@ -21,8 +21,8 @@
       state: running
       template: "{{ template_name }}"
       clone: false
-      memory: 2GiB
-      cores: 2
+      memory: 1GiB
+      cores: 1
       host: "{{ vm_host }}"
       placement_policy: pinned
       disks:
@@ -66,48 +66,11 @@
           name: disk-08
           storage_domain: "{{ storage_domain }}"
           interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-09
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-10
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-11
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-12
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-13
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-14
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-15
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-16
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
     vms:
       - name: delete-snapshot-vm1
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+      - name: delete-snapshot-vm2
         tag: vm_profile01
         profile: "{{ vm_profile01 }}"
 

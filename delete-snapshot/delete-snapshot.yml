@@ -156,6 +156,9 @@
         snapshot_id: "{{ snapshot.id }}"
         timeout: 900
       delegate_to: localhost
+      # If removing snapshot fails, we need to investigate it, but we want to
+      # continue with cleanup, so we can run this test in a loop.
+      ignore_errors: yes
 
     - name: "Stop and remove VM {{ inventory_hostname }}"
       ovirt.ovirt.ovirt_vm:

@@ -156,3 +156,10 @@
         snapshot_id: "{{ snapshot.id }}"
         timeout: 900
       delegate_to: localhost
+
+    - name: "Stop and remove VM {{ inventory_hostname }}"
+      ovirt.ovirt.ovirt_vm:
+        state: absent
+        auth: "{{ ovirt_auth }}"
+        name: "{{ inventory_hostname }}"
+      delegate_to: localhost

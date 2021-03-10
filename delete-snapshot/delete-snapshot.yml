@@ -23,6 +23,8 @@
       clone: false
       memory: 2GiB
       cores: 2
+      host: "{{ vm_host }}"
+      placement_policy: pinned
       disks:
         - size: "{{ vm_disk_size }}"
           format: cow

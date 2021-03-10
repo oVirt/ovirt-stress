@@ -8,3 +8,4 @@ storage_domain: FC01
 vm_ssh_user: root
 vm_ssh_password: password
 vm_disk_size: 3GiB
+vm_host: host.name

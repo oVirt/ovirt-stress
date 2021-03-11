@@ -21,91 +21,58 @@
       state: running
       template: "{{ template_name }}"
       clone: false
-      memory: 2GiB
-      cores: 2
+      memory: 1GiB
+      cores: 1
+      host: "{{ vm_host }}"
+      placement_policy: pinned
       disks:
-        - size: "{{ vm_disk_size }}"
+        # Data disks - we write 2 GiB of data before the merge to ensure that
+        # base volume is extended before the commit.
+        - size: 3GiB
           format: cow
-          name: disk-01
+          name: data-01
           storage_domain: "{{ storage_domain }}"
           interface: virtio
-        - size: "{{ vm_disk_size }}"
+        - size: 3GiB
           format: cow
-          name: disk-02
+          name: data-02
           storage_domain: "{{ storage_domain }}"
           interface: virtio
-        - size: "{{ vm_disk_size }}"
+        # Empty cow disks - will be extended during merge, but commit will be
+        # very quick since there is no data to commit.
+        - size: 2GiB
           format: cow
-          name: disk-03
+          name: empty-01
           storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
+          interface: virtio_scsi
+        - size: 2GiB
           format: cow
-          name: disk-04
+          name: empty-02
           storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-05
+          interface: virtio_scsi
+        # Empty raw disks - these disks are not extended during the merge, and
+        # commit completes very quickly since there is no data to commit.
+        - size: 1GiB
+          format: raw
+          name: empty-03
           storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-06
+          interface: virtio_scsi
+        - size: 1GiB
+          format: raw
+          name: empty-04
           storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-07
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-08
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-09
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-10
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-11
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-12
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-13
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-14
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-15
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
-        - size: "{{ vm_disk_size }}"
-          format: cow
-          name: disk-16
-          storage_domain: "{{ storage_domain }}"
-          interface: virtio
+          interface: virtio_scsi
     vms:
       - name: delete-snapshot-vm1
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+      - name: delete-snapshot-vm2
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+      - name: delete-snapshot-vm3
+        tag: vm_profile01
+        profile: "{{ vm_profile01 }}"
+      - name: delete-snapshot-vm4
         tag: vm_profile01
         profile: "{{ vm_profile01 }}"
 
@@ -137,7 +104,8 @@
         vm_name: "{{ inventory_hostname }}"
         description: snap1
         use_memory: false
-        timeout: 900
+        # Takes ~70 seconds on virtualized setup, should be much faster with real setup.
+        timeout: 130
       delegate_to: localhost
       register: snapshot
 
@@ -154,5 +122,16 @@
         state: absent
         vm_name: "{{ inventory_hostname }}"
         snapshot_id: "{{ snapshot.id }}"
-        timeout: 900
+        # Takes 330-390 seconds on virtualized setup, should be much faster with real setup.
+        timeout: 500
+      delegate_to: localhost
+      # If removing snapshot fails, we need to investigate it, but we want to
+      # continue with cleanup, so we can run this test in a loop.
+      ignore_errors: yes
+
+    - name: "Stop and remove VM {{ inventory_hostname }}"
+      ovirt.ovirt.ovirt_vm:
+        state: absent
+        auth: "{{ ovirt_auth }}"
+        name: "{{ inventory_hostname }}"
       delegate_to: localhost

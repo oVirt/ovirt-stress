@@ -104,8 +104,10 @@
         vm_name: "{{ inventory_hostname }}"
         description: snap1
         use_memory: false
-        # Takes ~70 seconds on virtualized setup, should be much faster with real setup.
-        timeout: 130
+        # Takes ~70 seconds on virtualized setup, should be much faster with
+        # real setup. If this times out the play does not cleanup properly and
+        # the entire test will fail, so lets try to avoid that.
+        timeout: 600
       delegate_to: localhost
       register: snapshot
 
@@ -122,7 +124,8 @@
         state: absent
         vm_name: "{{ inventory_hostname }}"
         snapshot_id: "{{ snapshot.id }}"
-        # Takes 330-390 seconds on virtualized setup, should be much faster with real setup.
+        # Takes 330-390 seconds on virtualized setup, should be much faster
+        # with real setup.
         timeout: 500
       delegate_to: localhost
       # If removing snapshot fails, we need to investigate it, but we want to

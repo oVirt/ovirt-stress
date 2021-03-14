@@ -113,11 +113,14 @@ class Runner:
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
 
-        try:
-            vm_service.stop()
-        except sdk.Error as e:
-            log.warning("Cannot stop vm %s: %s", self.vm.name, e)
-            return
+        for i in range(10):
+            try:
+                vm_service.stop()
+            except sdk.Error as e:
+                log.warning("Error stopping vm, retrying: %s", e)
+                time.sleep(self.conf["poll_interval"])
+            else:
+                break
 
         try:
             self.wait_for_vm_status(
@@ -136,12 +139,14 @@ class Runner:
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
 
-        try:
-            vm_service.remove()
-        except sdk.Error as e:
-            log.warning("Cannot remove vm %s: %s", self.vm.name, e)
-            self.vm = None
-            return
+        for i in range(10):
+            try:
+                vm_service.remove()
+            except sdk.Error as e:
+                log.warning("Error removing vm, retrying: %s", e)
+                time.sleep(self.conf["poll_interval"])
+            else:
+                break
 
         while True:
             time.sleep(self.conf["poll_interval"])
@@ -149,6 +154,10 @@ class Runner:
                 vm = vm_service.get()
             except sdk.NotFoundError:
                 break
+            except sdk.Error as e:
+                log.warning("Error polling vm, retrying: %s", e)
+                continue
+
             log.debug("VM %s status: %s", self.vm.name, vm.status)
 
         log.info("VM %s removed in %d seconds",
@@ -175,6 +184,9 @@ class Runner:
                 # Adding vm failed.
                 self.vm = None
                 raise
+            except sdk.Error as e:
+                log.warning("Error polling vm, retrying: %s", e)
+                continue
 
             if vm.status == status:
                 break
@@ -215,21 +227,32 @@ class Runner:
         snapshots_service = vm_service.snapshots_service()
         snapshot_service = snapshots_service.snapshot_service(self.snapshot.id)
 
-        snapshot_service.remove()
+        for i in range(10):
+            try:
+                snapshot_service.remove()
+            except sdk.Error as e:
+                log.warning("Error removing snapshot, retrying: %s", e)
+                time.sleep(self.conf["poll_interval"])
+            else:
+                break
 
         while True:
+            if time.monotonic() > deadline:
+                raise Timeout(
+                    "Timeout waiting until snapshot {} is removed"
+                    .format(self.snapshot.id))
+
             time.sleep(self.conf["poll_interval"])
             try:
                 snapshot = snapshot_service.get()
             except sdk.NotFoundError:
                 break
+            except sdk.Error as e:
+                log.warning("Error polling snapshot, retrying: %s", e)
+                continue
 
             log.debug("Snapshot %s status: %s",
                       self.snapshot.id, snapshot.snapshot_status)
-            if time.monotonic() > deadline:
-                raise Timeout(
-                    "Timeout waiting until snapshot {} is removed"
-                    .format(self.snapshot.id))
 
         log.info("Removed snapshot %s for vm %s in %d seconds",
                  self.snapshot.id, self.vm.name, time.monotonic() - start)
@@ -258,6 +281,9 @@ class Runner:
                 # Adding snapshot failed.
                 self.snapshot = None
                 raise
+            except sdk.Error as e:
+                log.warning("Error polling snapshot, retrying: %s", e)
+                continue
 
             if snapshot.snapshot_status == status:
                 break

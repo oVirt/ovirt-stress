@@ -30,7 +30,7 @@ cluster_name: "cluster-name"
 # Operations timeouts.
 create_vm_timeout: 300
 start_vm_timeout: 120
-stop_vm_timeout: 60
+stop_vm_timeout: 120
 vm_address_timeout: 120
 
 # If creating snapshot times out, we may not be able to remvoe the VM,

@@ -1,0 +1,107 @@
+---
+- name: Create vm
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    conf.yml
+
+  vars:
+    debug_vm_create: true
+    engine_fqdn: "{{ engine_fqdn  }}"
+    engine_user: "{{ engine_username }}"
+    engine_password: "{{ engine_password }}"
+    engine_cafile: "{{ engine_cafile }}"
+
+    vm_profile:
+      template: "{{ template_base }}"
+      cluster: "{{ cluster_name }}"
+      state: stopped
+      disks:
+        # Data disks - we write 2 GiB of data before the merge to ensure that
+        # base volume is extended before the commit.
+        - size: 3GiB
+          format: cow
+          name: data-01
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: 3GiB
+          format: cow
+          name: data-02
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        - size: 3GiB
+          format: cow
+          name: data-03
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+        # Empty cow disks - will be extended during merge, but commit will be
+        # very quick since there is no data to commit.
+        - size: 2GiB
+          format: cow
+          name: empty-01
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+        - size: 2GiB
+          format: cow
+          name: empty-02
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+        - size: 2GiB
+          format: cow
+          name: empty-03
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+        # Empty raw disks - these disks are not extended during the merge, and
+        # commit completes very quickly since there is no data to commit.
+        - size: 1GiB
+          format: raw
+          name: empty-04
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+        - size: 1GiB
+          format: raw
+          name: empty-05
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+        - size: 1GiB
+          format: raw
+          name: empty-06
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio_scsi
+    vms:
+      - name: delete-snapshot-vm
+        profile: "{{ vm_profile }}"
+
+  roles:
+    - vm_infra
+  collections:
+    - ovirt.ovirt
+
+- name: Create template
+  hosts: localhost
+  connection: local
+  vars_files:
+    conf.yml
+  tasks:
+    - name: "Obtain SSO token"
+      ovirt.ovirt.ovirt_auth:
+        url: "https://{{engine_fqdn}}/ovirt-engine/api"
+        username: "{{ engine_username }}"
+        password: "{{ engine_password }}"
+        ca_file: "{{ engine_cafile }}"
+
+    - name: "Create template from vm"
+      ovirt.ovirt.ovirt_template:
+        auth: "{{ ovirt_auth }}"
+        cluster: "{{ cluster_name }}"
+        name: "{{ template_name }}"
+        vm: delete-snapshot-vm
+        description: "Template for delete-snapshot vms"
+
+    - name: "Remove vm"
+      ovirt.ovirt.ovirt_vm:
+        state: absent
+        auth: "{{ ovirt_auth }}"
+        name: delete-snapshot-vm

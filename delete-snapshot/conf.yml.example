@@ -1,0 +1,59 @@
+# Create conf.yml file based on this example.
+
+# Engine connection
+engine_fqdn: "engine-fqdn"
+engine_username: "admin@internal"
+engine_password: "engine-password"
+engine_cafile: "/etc/pki/vdsm/certs/cacert.pem"
+
+# The template used to create template_name. This template must have the
+# public key of the host running the test.
+template_base: "template-base"
+
+# The template name used to create the test vms.
+# To create this template run:
+#   ansible-playbook setup.yml
+template_name: "delete-snapshot-template"
+
+# VM name prefix.
+vm_name: "delete-snspshot-vm"
+
+# Host name to use for running the VMs.
+vm_host: "host-name"
+
+# Storage domain for creating the template.
+storage_domain: "storage-domain"
+
+# Cluster name for creating the test VMs.
+cluster_name: "cluster-name"
+
+# Operations timeouts.
+create_vm_timeout: 300
+start_vm_timeout: 120
+stop_vm_timeout: 120
+vm_address_timeout: 120
+
+# If creating snapshot times out, we may not be able to remvoe the VM,
+# which will fail the next iterations. Keep the timeout big enough to
+# avoid this.
+create_snapshot_timeout: 600
+
+# If removing snapshot times out, we man not be able to remove the VM,
+# which will fail the next iterations. Keep the timeout big enough to
+# avoid this.
+remove_snapshot_timeout: 600
+
+# Polling interval for engine queries.
+poll_interval: 5
+
+# Number of second between starting VMs.
+run_delay: 60
+
+# Number of VMs to create.
+vms_count: 4
+
+# Number of test iterations for every vm.
+iterations: 1
+
+# Log verbose debug messages.
+debug: false

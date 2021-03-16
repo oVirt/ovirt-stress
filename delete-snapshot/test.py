@@ -3,6 +3,7 @@ import logging
 import subprocess
 import threading
 import time
+import uuid
 import yaml
 
 import ovirtsdk4 as sdk
@@ -12,6 +13,10 @@ log = logging.getLogger("test")
 
 
 class Timeout(Exception):
+    pass
+
+
+class JobError(Exception):
     pass
 
 
@@ -67,14 +72,18 @@ class Runner:
     def disconnect(self):
         self.connection.close()
 
+    # Modifying VMs.
+
     def create_vm(self):
         vm_name = "{}-{}-{}".format(
             self.conf["vm_name"], self.index, self.iteration)
         log.info("Creating vm %s", vm_name)
 
         start = time.monotonic()
+        deadline = start + self.conf["create_vm_timeout"]
 
         vms_service = self.connection.system_service().vms_service()
+        correlation_id = str(uuid.uuid4())
 
         self.vm = vms_service.add(
             types.Vm(
@@ -89,10 +98,14 @@ class Runner:
             ),
             # Clone to VM to keep raw disks raw.
             clone=True,
+            query={'correlation_id': correlation_id},
         )
 
-        self.wait_for_vm_status(
-            types.VmStatus.DOWN, self.conf["create_vm_timeout"])
+        try:
+            self.wait_for_jobs(correlation_id, deadline)
+        except JobError:
+            self.vm = None
+            raise
 
         log.info("VM %s created in %d seconds",
                  self.vm.name, time.monotonic() - start)
@@ -172,8 +185,8 @@ class Runner:
         self.vm = None
 
     def wait_for_vm_status(self, status, timeout):
-        log.debug("Waiting up to %d seconds until vm %s is %s",
-                  timeout, self.vm.name, status)
+        log.info("Waiting up to %d seconds until vm %s is %s",
+                 timeout, self.vm.name, status)
 
         deadline = time.monotonic() + timeout
 
@@ -200,26 +213,34 @@ class Runner:
 
             log.debug("VM %s status: %s", self.vm.name, vm.status)
 
+    # Modifying snapshots.
+
     def create_snapshot(self):
         log.info("Creating snapshot for vm %s", self.vm.name)
 
         start = time.monotonic()
+        deadline = start + self.conf["create_snapshot_timeout"]
 
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
         snapshots_service = vm_service.snapshots_service()
+        correlation_id = str(uuid.uuid4())
 
         self.snapshot = snapshots_service.add(
             types.Snapshot(
                 description='Snapshot 1',
                 persist_memorystate=False
-            )
+            ),
+            query={'correlation_id': correlation_id},
         )
 
-        self.wait_for_snapshot_status(
-            types.SnapshotStatus.OK, self.conf["create_snapshot_timeout"])
+        try:
+            self.wait_for_jobs(correlation_id, deadline)
+        except JobError:
+            self.snapshot = None
+            raise
 
-        log.info("Created snapshot %s for vm %s in %d seconds",
+        log.info("Snapshot %s for vm %s created in %d seconds",
                  self.snapshot.id, self.vm.name, time.monotonic() - start)
 
     def remove_snapshot(self):
@@ -233,70 +254,17 @@ class Runner:
         vm_service = vms_service.vm_service(self.vm.id)
         snapshots_service = vm_service.snapshots_service()
         snapshot_service = snapshots_service.snapshot_service(self.snapshot.id)
+        correlation_id = str(uuid.uuid4())
 
-        for i in range(10):
-            try:
-                snapshot_service.remove()
-            except sdk.Error as e:
-                log.warning("Error removing snapshot, retrying: %s", e)
-                time.sleep(self.conf["poll_interval"])
-            else:
-                break
+        snapshot_service.remove(query={'correlation_id': correlation_id})
 
-        while True:
-            if time.monotonic() > deadline:
-                raise Timeout(
-                    "Timeout waiting until snapshot {} is removed"
-                    .format(self.snapshot.id))
+        self.wait_for_jobs(correlation_id, deadline)
 
-            time.sleep(self.conf["poll_interval"])
-            try:
-                snapshot = snapshot_service.get()
-            except sdk.NotFoundError:
-                break
-            except sdk.Error as e:
-                log.warning("Error polling snapshot, retrying: %s", e)
-                continue
-
-            log.debug("Snapshot %s status: %s",
-                      self.snapshot.id, snapshot.snapshot_status)
-
-        log.info("Removed snapshot %s for vm %s in %d seconds",
+        log.info("Snapshot %s for vm %s removed in %d seconds",
                  self.snapshot.id, self.vm.name, time.monotonic() - start)
         self.snapshot = None
 
-    def wait_for_snapshot_status(self, status, timeout):
-        log.debug("Waiting up to %d seconds until snapshot %s is %s",
-                  timeout, self.snapshot.id, status)
-
-        deadline = time.monotonic() + timeout
-
-        vms_service = self.connection.system_service().vms_service()
-        vm_service = vms_service.vm_service(self.vm.id)
-        snapshots_service = vm_service.snapshots_service()
-        snapshot_service = snapshots_service.snapshot_service(self.snapshot.id)
-
-        while True:
-            if time.monotonic() > deadline:
-                raise Timeout(
-                    "Timeout waiting until snapshot is {}".format(status))
-
-            time.sleep(self.conf["poll_interval"])
-            try:
-                snapshot = snapshot_service.get()
-            except sdk.NotFoundError:
-                # Adding snapshot failed.
-                self.snapshot = None
-                raise
-            except sdk.Error as e:
-                log.warning("Error polling snapshot, retrying: %s", e)
-                continue
-
-            if snapshot.snapshot_status == status:
-                break
-
-            log.debug("Snapshot %s status: %s",
-                      self.snapshot.id, snapshot.snapshot_status)
+    # Accessing guest.
 
     def write_data(self):
         try:
@@ -370,6 +338,56 @@ class Runner:
                                 return ip.address
 
             time.sleep(self.conf["poll_interval"])
+
+    # Polling jobs.
+
+    def wait_for_jobs(self, correlation_id, deadline):
+        log.info("Waiting for jobs with correlation id %s",
+                 correlation_id)
+
+        while not self.jobs_completed(correlation_id):
+            time.sleep(self.conf["poll_interval"])
+            if time.monotonic() > deadline:
+                raise Timeout(
+                    "Timeout waiting for jobs with correlation id {}"
+                    .format(correlation_id))
+
+    def jobs_completed(self, correlation_id):
+        """
+        Return True if all jobs with specified correlation id have completed,
+        False otherwise.
+
+        Raise JobError if some jobs have failed or aborted.
+        """
+        jobs_service = self.connection.system_service().jobs_service()
+
+        try:
+            jobs = jobs_service.list(
+                search="correlation_id={}".format(correlation_id))
+        except sdk.Error as e:
+            log.warning(
+                "Error searching for jobs with correlation id %s: %s",
+                correlation_id, e)
+            # We dont know, assume that jobs did not complete yet.
+            return False
+
+        if all(job.status != types.JobStatus.STARTED for job in jobs):
+            # In some cases like create snapshot, it is not be possible to
+            # detect the failure by checking the entity.
+            failed_jobs = [(job.description, str(job.status))
+                           for job in jobs
+                           if job.status != types.JobStatus.FINISHED]
+            if failed_jobs:
+                raise JobError(
+                    "Some jobs for with correlation id {} have failed: {}"
+                    .format(correlation_id, failed_jobs))
+
+            return True
+        else:
+            jobs_status = [(job.description, str(job.status)) for job in jobs]
+            log.debug("Some jobs with correlation id %s are running: %s",
+                      correlation_id, jobs_status)
+            return False
 
 
 with open("conf.yml") as f:

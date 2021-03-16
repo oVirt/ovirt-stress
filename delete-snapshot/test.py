@@ -21,6 +21,7 @@ class Runner:
         self.index = index
         self.conf = conf
         self.connection = None
+        self.iteration = None
         self.vm = None
         self.snapshot = None
 
@@ -29,6 +30,7 @@ class Runner:
         self.connect()
 
         for i in range(self.conf["iterations"]):
+            self.iteration = i
             start = time.monotonic()
             log.info("Iteration %d started", i)
             try:
@@ -62,7 +64,8 @@ class Runner:
         self.connection.close()
 
     def create_vm(self):
-        vm_name = "{}-{}".format(self.conf["vm_name"], self.index)
+        vm_name = "{}-{}-{}".format(
+            self.conf["vm_name"], self.index, self.iteration)
         log.info("Creating vm %s", vm_name)
 
         start = time.monotonic()

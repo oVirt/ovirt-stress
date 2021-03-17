@@ -36,20 +36,22 @@ class Runner:
             start = time.monotonic()
             log.info("Iteration %d started", i)
             try:
-                self.create_vm()
-                self.start_vm()
-                self.create_snapshot()
-                self.write_data()
-                self.remove_snapshot()
+                try:
+                    self.create_vm()
+                    self.start_vm()
+                    self.create_snapshot()
+                    self.write_data()
+                    self.remove_snapshot()
+                finally:
+                    if self.vm:
+                        self.stop_vm()
+                        self.remove_vm()
             except Exception:
-                log.exception("Iteration %d failed", i)
+                log.exception("Iteration %d failed in %d seconds",
+                              i, time.monotonic() - start)
             else:
                 log.info("Iteration %d succeeded in %d seconds",
                          i, time.monotonic() - start)
-            finally:
-                if self.vm:
-                    self.stop_vm()
-                    self.remove_vm()
 
         self.disconnect()
         log.info("Finished")

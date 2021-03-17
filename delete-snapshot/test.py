@@ -31,6 +31,8 @@ class Runner:
 
         for i in range(self.conf["iterations"]):
             self.iteration = i
+            self.vm = None
+            self.snapshot = None
             start = time.monotonic()
             log.info("Iteration %d started", i)
             try:

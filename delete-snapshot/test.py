@@ -114,13 +114,13 @@ class Runner:
         log.info("Starting vm %s", self.vm.name)
 
         start = time.monotonic()
+        deadline = start + self.conf["start_vm_timeout"]
 
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
         vm_service.start()
 
-        self.wait_for_vm_status(
-            types.VmStatus.UP, self.conf["start_vm_timeout"])
+        self.wait_for_vm_status(types.VmStatus.UP, deadline)
 
         log.info("VM %s started in %d seconds",
                  self.vm.name, time.monotonic() - start)
@@ -129,6 +129,7 @@ class Runner:
         log.info("Stopping vm %s", self.vm.name)
 
         start = time.monotonic()
+        deadline = start + self.conf["stop_vm_timeout"]
 
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
@@ -143,8 +144,7 @@ class Runner:
                 break
 
         try:
-            self.wait_for_vm_status(
-                types.VmStatus.DOWN, self.conf["stop_vm_timeout"])
+            self.wait_for_vm_status(types.VmStatus.DOWN, deadline)
         except sdk.NotFoundError:
             log.warning("VM %s not found: %s", self.vm.name)
         else:
@@ -189,11 +189,8 @@ class Runner:
                  self.vm.name, time.monotonic() - start)
         self.vm = None
 
-    def wait_for_vm_status(self, status, timeout):
-        log.info("Waiting up to %d seconds until vm %s is %s",
-                 timeout, self.vm.name, status)
-
-        deadline = time.monotonic() + timeout
+    def wait_for_vm_status(self, status, deadline):
+        log.info("Waiting until vm %s is %s", self.vm.name, status)
 
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)

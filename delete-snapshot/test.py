@@ -6,6 +6,8 @@ import time
 import uuid
 import yaml
 
+from collections import Counter
+
 import ovirtsdk4 as sdk
 import ovirtsdk4.types as types
 
@@ -29,6 +31,9 @@ class Runner:
         self.iteration = None
         self.vm = None
         self.snapshot = None
+        self.passed = 0
+        self.failed = 0
+        self.errored = 0
 
     def run(self):
         log.info("Started")
@@ -36,30 +41,48 @@ class Runner:
 
         for i in range(self.conf["iterations"]):
             self.iteration = i
-            self.vm = None
-            self.snapshot = None
             start = time.monotonic()
             log.info("Iteration %d started", i)
+
             try:
+                self.setup()
                 try:
-                    self.create_vm()
-                    self.start_vm()
-                    self.create_snapshot()
-                    self.write_data()
-                    self.remove_snapshot()
-                finally:
-                    if self.vm:
-                        self.stop_vm()
-                        self.remove_vm()
+                    self.test()
+                    log.info("Iteration %d passed", i)
+                    self.passed += 1
+                except Exception:
+                    log.exception("Iteration %d failed", i)
+                    self.failed += 1
             except Exception:
-                log.exception("Iteration %d failed in %d seconds",
-                              i, time.monotonic() - start)
-            else:
-                log.info("Iteration %d succeeded in %d seconds",
-                         i, time.monotonic() - start)
+                log.exception("Iteration %d errored", i)
+                self.errored += 1
+            finally:
+                try:
+                    self.teardown()
+                except Exception:
+                    log.exception("Error tearing down")
+
+            log.info("Iteration %d completed in %d seconds",
+                     i, time.monotonic() - start)
 
         self.disconnect()
         log.info("Finished")
+
+    def setup(self):
+        self.vm = None
+        self.snapshot = None
+        self.create_vm()
+        self.start_vm()
+        self.create_snapshot()
+        self.write_data()
+
+    def test(self):
+        self.remove_snapshot()
+
+    def teardown(self):
+        if self.vm:
+            self.stop_vm()
+            self.remove_vm()
 
     def connect(self):
         self.connection = sdk.Connection(
@@ -388,7 +411,9 @@ logging.basicConfig(
     level=logging.DEBUG if conf["debug"] else logging.INFO,
     format="%(asctime)s %(levelname)-7s (%(threadName)s) %(message)s")
 
-threads = []
+start = time.monotonic()
+stats = Counter()
+runners = []
 
 for i in range(conf["vms_count"]):
     name = "run/{}".format(i)
@@ -396,13 +421,18 @@ for i in range(conf["vms_count"]):
     r = Runner(i, conf)
     t = threading.Thread(target=r.run, name=name, daemon=True)
     t.start()
-    threads.append(t)
+    runners.append((r, t))
 
     log.info("Waiting %d seconds before starting next runner", conf["run_delay"])
     time.sleep(conf["run_delay"])
 
-for t in threads:
+for r, t in runners:
     log.info("Waiting for runner %s", t.name)
     t.join()
+    stats["passed"] += r.passed
+    stats["failed"] += r.failed
+    stats["errored"] += r.errored
 
-log.info("Finished")
+log.info("%d failed, %d passed, %d errored in %d seconds",
+         stats["failed"], stats["passed"], stats["errored"],
+         time.monotonic() - start)

@@ -155,6 +155,7 @@ class Runner:
         log.info("Removing vm %s", self.vm.name)
 
         start = time.monotonic()
+        deadline = start + self.conf["remove_vm_timeout"]
 
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
@@ -169,13 +170,17 @@ class Runner:
                 break
 
         while True:
+            if time.monotonic() > deadline:
+                raise Timeout("Timeout removing vm {}".format(self.vm.name))
+
             time.sleep(self.conf["poll_interval"])
             try:
                 vm = vm_service.get()
             except sdk.NotFoundError:
                 break
             except sdk.Error as e:
-                log.warning("Error polling vm, retrying: %s", e)
+                log.warning("Error polling vm %s status, retrying: %s",
+                            self.vm.name, e)
                 continue
 
             log.debug("VM %s status: %s", self.vm.name, vm.status)

@@ -134,22 +134,16 @@ class Runner:
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
 
-        for i in range(10):
-            try:
-                vm_service.stop()
-            except sdk.Error as e:
-                log.warning("Error stopping vm, retrying: %s", e)
-                time.sleep(self.conf["poll_interval"])
-            else:
-                break
+        # Checking vm status before stopping is racy, but engine fail if
+        # vm is not running, so we have no choice.
 
-        try:
+        vm = vm_service.get()
+        if vm.status not in (types.VmStatus.DOWN, types.VmStatus.IMAGE_LOCKED):
+            vm_service.stop()
             self.wait_for_vm_status(types.VmStatus.DOWN, deadline)
-        except sdk.NotFoundError:
-            log.warning("VM %s not found: %s", self.vm.name)
-        else:
-            log.info("VM %s stopped in %d seconds",
-                     self.vm.name, time.monotonic() - start)
+
+        log.info("VM %s stopped in %d seconds",
+                 self.vm.name, time.monotonic() - start)
 
     def remove_vm(self):
         log.info("Removing vm %s", self.vm.name)
@@ -160,14 +154,7 @@ class Runner:
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
 
-        for i in range(10):
-            try:
-                vm_service.remove()
-            except sdk.Error as e:
-                log.warning("Error removing vm, retrying: %s", e)
-                time.sleep(self.conf["poll_interval"])
-            else:
-                break
+        vm_service.remove()
 
         while True:
             if time.monotonic() > deadline:

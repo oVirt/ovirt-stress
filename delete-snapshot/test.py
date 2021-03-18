@@ -184,7 +184,9 @@ class Runner:
 
         while True:
             if time.monotonic() > deadline:
-                raise Timeout("Timeout waiting until vm is {}".format(status))
+                raise Timeout(
+                    "Timeout waiting until vm {} is {}"
+                    .format(self.vm.name, status))
 
             time.sleep(self.conf["poll_interval"])
             try:

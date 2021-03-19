@@ -157,16 +157,40 @@ class Runner:
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
 
-        # Checking vm status before stopping is racy, but engine fail if
-        # vm is not running, so we have no choice.
-
         vm = vm_service.get()
-        if vm.status not in (types.VmStatus.DOWN, types.VmStatus.IMAGE_LOCKED):
-            vm_service.stop()
+
+        if vm.status == types.VmStatus.IMAGE_LOCKED:
             self.wait_for_vm_status(types.VmStatus.DOWN, deadline)
+        elif vm.status != types.VmStatus.DOWN:
+            self.try_to_stop_vm(deadline)
 
         log.info("VM %s stopped in %d seconds",
                  self.vm.name, time.monotonic() - start)
+
+    def try_to_stop_vm(self, deadline):
+        vms_service = self.connection.system_service().vms_service()
+        vm_service = vms_service.vm_service(self.vm.id)
+
+        # Testing shows that if a vm is in WAIT_FOR_LUNCH state,
+        # stopping it does nothing. To handle all possible cases, lets
+        # repeat the stop request and check the status until the VM is
+        # DOWN or the timeout expires.
+
+        while True:
+            try:
+                vm_service.stop()
+            except sdk.Error as e:
+                log.warning("Error stopping vm %s: %s", self.vm.name, e)
+
+            time.sleep(self.conf["poll_interval"])
+            vm = vm_service.get()
+            log.debug("VM %s is %s", self.vm.name, vm.status)
+            if vm.status == types.VmStatus.DOWN:
+                break
+
+            if time.monotonic() > deadline:
+                raise Timeout(
+                    "Timeout stopping vm {}".format(self.vm.name))
 
     def remove_vm(self):
         log.info("Removing vm %s", self.vm.name)

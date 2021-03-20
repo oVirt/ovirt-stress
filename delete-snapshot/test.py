@@ -71,6 +71,7 @@ class Runner:
     def setup(self):
         self.vm = None
         self.snapshot = None
+        self.check_data_center()
         self.create_vm()
         self.start_vm()
         self.create_snapshot()
@@ -81,6 +82,7 @@ class Runner:
 
     def teardown(self):
         if self.vm:
+            self.check_data_center()
             self.stop_vm()
             self.remove_vm()
 
@@ -94,6 +96,52 @@ class Runner:
 
     def disconnect(self):
         self.connection.close()
+
+    # Data center health
+
+    def check_data_center(self):
+        log.info("Checking data center status for cluster %s",
+                 self.conf["cluster_name"])
+
+        start = time.monotonic()
+        deadline = start + self.conf["data_center_up_timeout"]
+
+        system_service = self.connection.system_service()
+
+        clusters_service = system_service.clusters_service()
+        clusters = clusters_service.list(
+            search="name={}".format(self.conf["cluster_name"]))
+
+        cluster = clusters[0]
+
+        data_centers_service = system_service.data_centers_service()
+        data_center_service = data_centers_service.data_center_service(
+            id=cluster.data_center.id)
+
+        data_center = data_center_service.get()
+        log.debug("Data center %s is %s",
+                  data_center.name, data_center.status)
+        if data_center.status == types.DataCenterStatus.UP:
+            return
+
+        log.info("Data center %s is %s, waiting until it is up",
+                 data_center.name, data_center.status)
+
+        while True:
+            time.sleep(self.conf["poll_interval"])
+            data_center = data_center_service.get()
+            log.debug("Data center %s is %s",
+                      data_center.name, data_center.status)
+            if data_center.status == types.DataCenterStatus.UP:
+                break
+
+            if time.monotonic() > deadline:
+                raise Timeout(
+                    "Timeout waiting until data center {} is up"
+                    .format(data_center.name))
+
+        log.info("Data center %s recovered in %d seconds",
+                 data_center.name, time.monotonic() - start)
 
     # Modifying VMs.
 

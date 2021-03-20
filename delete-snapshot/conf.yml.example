@@ -28,6 +28,7 @@ storage_domain: "storage-domain"
 cluster_name: "cluster-name"
 
 # Operations timeouts.
+data_center_up_timeout: 600
 create_vm_timeout: 900
 start_vm_timeout: 300
 create_snapshot_timeout: 900

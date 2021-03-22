@@ -28,23 +28,17 @@ storage_domain: "storage-domain"
 cluster_name: "cluster-name"
 
 # Operations timeouts.
-create_vm_timeout: 300
-start_vm_timeout: 120
-stop_vm_timeout: 120
+data_center_up_timeout: 600
+create_vm_timeout: 900
+start_vm_timeout: 300
+create_snapshot_timeout: 900
 vm_address_timeout: 120
-
-# If creating snapshot times out, we may not be able to remvoe the VM,
-# which will fail the next iterations. Keep the timeout big enough to
-# avoid this.
-create_snapshot_timeout: 600
-
-# If removing snapshot times out, we man not be able to remove the VM,
-# which will fail the next iterations. Keep the timeout big enough to
-# avoid this.
-remove_snapshot_timeout: 600
+remove_snapshot_timeout: 900
+stop_vm_timeout: 300
+remove_vm_timeout: 300
 
 # Polling interval for engine queries.
-poll_interval: 5
+poll_interval: 10
 
 # Number of second between starting VMs.
 run_delay: 60

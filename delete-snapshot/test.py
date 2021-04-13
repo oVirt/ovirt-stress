@@ -365,11 +365,11 @@ class Runner:
 
         script = b"""
             for disk in /dev/vd*; do
-                dd if=/dev/zero bs=1M count=2048 \
+                dd if=/dev/zero bs=1M count=%d \
                    of=$disk oflag=direct conv=fsync &
             done
             wait
-        """
+        """ % self.conf["write_data_mb"]
 
         cmd = [
             "ssh",

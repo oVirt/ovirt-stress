@@ -19,8 +19,8 @@
       cluster: "{{ cluster_name }}"
       state: stopped
       disks:
-        # Data disks - we write 2 GiB of data before the merge to ensure that
-        # base volume is extended before the commit.
+        # Data disks - we write 2 GiB (conf.yml:write_data_mb) of data before
+        # the merge to ensure that base volume is extended before the commit.
         - size: 3GiB
           format: cow
           name: data-01

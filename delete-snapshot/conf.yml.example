@@ -27,6 +27,10 @@ storage_domain: "storage-domain"
 # Cluster name for creating the test VMs.
 cluster_name: "cluster-name"
 
+# Amount of data in megabytes to write to every virtio disk. Writing
+# more data increase the load on the system and slow down the test.
+write_data_mb = 2048
+
 # Operations timeouts.
 data_center_up_timeout: 600
 create_vm_timeout: 900

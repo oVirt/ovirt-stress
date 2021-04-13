@@ -83,6 +83,12 @@ performing 1800 single disk merges.
 
     iterations: 1
 
+By default we write 2 GiB of data to every virtio disk before deleting
+the snapshot. Writing more data increase the load on the system and slow
+down the test.
+
+    write_data_mb: 2048
+
 ### Troubleshooting
 
 If something goes wrong, you can enable verbose logs to debug the test.

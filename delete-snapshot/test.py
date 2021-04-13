@@ -361,6 +361,7 @@ class Runner:
             return
 
         log.info("Writing data in vm %s address %s", self.vm.name, vm_address)
+        start = time.monotonic()
 
         script = b"""
             for disk in /dev/vd*; do
@@ -394,6 +395,9 @@ class Runner:
         else:
             log.debug("Command succeeded out=%r err=%r",
                       r.stdout, r.stderr)
+
+        log.info("Writing data completed in %d seconds",
+                 time.monotonic() - start)
 
     def find_vm_address(self):
         start = time.monotonic()

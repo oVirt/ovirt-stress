@@ -152,24 +152,13 @@ def create_transfer(
         timeout_policy,
     )
 
-    # Create image transfer for disk or snapshot.
-
     transfer = types.ImageTransfer(
         host=host,
         direction=direction,
         backup=backup,
         inactivity_timeout=inactivity_timeout,
         timeout_policy=timeout_policy,
-
-        # format=raw uses the NBD backend, enabling:
-        # - Transfer raw guest data, regardless of the disk format.
-        # - Automatic format conversion to remote disk format. For example,
-        #   upload qcow2 image to raw disk, or raw image to qcow2 disk.
-        # - Collapsed qcow2 chains to single raw file.
-        # - Extents reporting for qcow2 images and raw images on file storage,
-        #   speeding up downloads.
         format=types.DiskFormat.RAW,
-
         shallow=shallow,
     )
 
@@ -180,18 +169,15 @@ def create_transfer(
 
     transfers_service = connection.system_service().image_transfers_service()
 
-    # Add the new transfer to engine. This starts the transfer and retruns a
-    # transfer ID that can be used to track this image transfer.
     transfer = transfers_service.add(transfer)
 
-    # You can use the transfer id to locate logs for this transfer.
-    log.info("Transfer ID %s", transfer.id)
+    log.info("Created transfer %r", transfer.id)
 
     # At this point the transfer owns the disk and will delete the disk if the
     # transfer is canceled, or if finalizing the transfer fails.
 
     transfer_service = transfers_service.image_transfer_service(transfer.id)
-    start = time.time()
+    start = time.monotonic()
 
     while True:
         time.sleep(1)
@@ -199,16 +185,15 @@ def create_transfer(
             transfer = transfer_service.get()
         except sdk.NotFoundError:
             # The system has removed the disk and the transfer.
-            raise RuntimeError("Transfer {} was removed".format(transfer.id))
+            raise RuntimeError(f"Transfer {transfer.id} was removed")
 
         if transfer.phase == types.ImageTransferPhase.FINISHED_FAILURE:
             # The system will remove the disk and the transfer soon.
-            raise RuntimeError("Transfer {} has failed".format(transfer.id))
+            raise RuntimeError(f"Transfer {transfer.id} has failed")
 
         if transfer.phase == types.ImageTransferPhase.PAUSED_SYSTEM:
             transfer_service.cancel()
-            raise RuntimeError(
-                "Transfer {} was paused by system".format(transfer.id))
+            raise RuntimeError(f"Transfer {transfer.id} was paused by system")
 
         if transfer.phase == types.ImageTransferPhase.TRANSFERRING:
             break
@@ -216,23 +201,20 @@ def create_transfer(
         if transfer.phase != types.ImageTransferPhase.INITIALIZING:
             transfer_service.cancel()
             raise RuntimeError(
-                "Unexpected transfer {} phase {}"
-                .format(transfer.id, transfer.phase))
+                f"Unexpected transfer {transfer.id} phase {transfer.phase}")
 
-        if time.time() > start + timeout:
+        if time.monotonic() > start + timeout:
             log.info("Cancelling transfer %s", transfer.id)
             transfer_service.cancel()
             raise RuntimeError(
-                "Timed out waiting for transfer {}".format(transfer.id))
-
-    log.info("Transfer initialized in %.3f seconds", time.time() - start)
+                f"Timed out waiting for transfer {transfer.id}")
 
     # Log the transfer host name. This is very useful for troubleshooting.
-    hosts_service = connection.system_service().hosts_service()
-    host_service = hosts_service.host_service(transfer.host.id)
-    transfer.host = host_service.get()
+    transfer.host = connection.follow_link(transfer.host)
 
-    log.info("Transfer host name: %s", transfer.host.name)
+    log.info("Transfer %r ready on host %r in %d seconds",
+             transfer.id, transfer.host.name, time.monotonic() - start)
+
 
     return transfer
 
@@ -244,7 +226,7 @@ def cancel_transfer(connection, transfer):
     There is not need to cancel a download transfer, it can always be
     finalized.
     """
-    log.info("Cancelling transfer %s", transfer.id)
+    log.info("Cancelling transfer %r", transfer.id)
     transfer_service = (connection.system_service()
                             .image_transfers_service()
                             .image_transfer_service(transfer.id))
@@ -285,13 +267,13 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
         timeout (float, optional): number of seconds to wait for transfer
             to finalize.
     """
-    log.info("Finalizing transfer %s for disk %s", transfer.id, disk.id)
+    log.info("Finalizing transfer %r for disk %r", transfer.id, disk.id)
+
+    start = time.monotonic()
 
     transfer_service = (connection.system_service()
                             .image_transfers_service()
                             .image_transfer_service(transfer.id))
-
-    start = time.time()
 
     transfer_service.finalize()
     while True:
@@ -310,28 +292,26 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
             except sdk.NotFoundError:
                 # Disk verification failed and the system removed the disk.
                 raise RuntimeError(
-                    "Transfer {} failed: disk {} was removed"
-                    .format(transfer.id, disk.id))
+                    f"Transfer {transfer.id} failed: disk {disk.id} was removed")
 
             if disk.status == types.DiskStatus.OK:
                 break
 
             raise RuntimeError(
-                "Transfer {} failed: disk {} is '{}'"
-                .format(transfer.id, disk.id, disk.status))
+                f"Transfer {transfer.id} failed: disk {disk.id} status {disk.status}")
 
-        log.debug("transfer.phase=%s", transfer.phase)
+        log.debug("Transfer %r in phase %r", transfer.id, transfer.phase)
+
         if transfer.phase == types.ImageTransferPhase.FINISHED_SUCCESS:
             break
 
         if transfer.phase == types.ImageTransferPhase.FINISHED_FAILURE:
-            raise RuntimeError(
-                "Transfer {} failed, phase: {}"
-                .format(transfer.id, transfer.phase))
+            raise RuntimeError(f"Transfer {transfer.id} failed")
 
-        if time.time() > start + timeout:
+        if time.monotonic() > start + timeout:
             raise RuntimeError(
-                "Timed out waiting for transfer {} to finalize, phase: {}"
-                .format(transfer.id, transfer.phase))
+                f"Timed out waiting for transfer {transfer.id} to finalize, "
+                f"transfer is {transfer.phase}")
 
-    log.info("Transfer finalized in %.3f seconds", time.time() - start)
+    log.info("Transfer %r finalized in %d seconds",
+             transfer.id, time.monotonic() - start)

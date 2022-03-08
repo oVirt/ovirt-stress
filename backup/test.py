@@ -338,7 +338,7 @@ class Runner:
         self.vm = None
 
     def wait_for_vm_status(self, status, deadline):
-        log.info("Waiting until vm %s is %s", self.vm.name, status)
+        log.debug("Waiting until vm %s is %s", self.vm.name, status)
 
         vms_service = self.connection.system_service().vms_service()
         vm_service = vms_service.vm_service(self.vm.id)
@@ -398,8 +398,7 @@ class Runner:
     # Polling jobs.
 
     def wait_for_jobs(self, correlation_id, deadline):
-        log.info("Waiting for jobs with correlation id %s",
-                 correlation_id)
+        log.debug("Waiting for jobs with correlation id %s", correlation_id)
 
         while not self.jobs_completed(correlation_id):
             time.sleep(self.conf["poll_interval"])
@@ -479,11 +478,11 @@ for i in range(conf["vms_count"]):
     t.start()
     runners.append((r, t))
 
-    log.info("Waiting %d seconds before starting next runner", conf["run_delay"])
+    log.debug("Waiting %d seconds before starting next runner", conf["run_delay"])
     time.sleep(conf["run_delay"])
 
 for r, t in runners:
-    log.info("Waiting for runner %s", t.name)
+    log.debug("Waiting for runner %s", t.name)
     t.join()
     stats["passed"] += r.passed
     stats["failed"] += r.failed

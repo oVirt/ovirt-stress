@@ -26,7 +26,7 @@ log = logging.getLogger("backup")
 def start_backup(connection, vm, from_checkpoint=None, backup_id=None,
                  description=None):
     log.info("Starting backup for vm %r from checkpoint %r",
-             vm.id, from_checkpoint)
+             vm.name, from_checkpoint)
 
     start = time.monotonic()
 
@@ -47,7 +47,7 @@ def start_backup(connection, vm, from_checkpoint=None, backup_id=None,
         query={'with_snapshot': 'true'},
     )
 
-    log.info("Waiting until backup %r is ready", backup.id)
+    log.debug("Waiting until backup %r is ready", backup.id)
 
     backup_service = backups_service.backup_service(backup.id)
 
@@ -70,7 +70,7 @@ def stop_backup(connection, backup):
 
     backup_service.finalize()
 
-    log.info("Waiting until backup %r stops", backup.id)
+    log.debug("Waiting until backup %r stops", backup.id)
 
     while backup.phase != types.BackupPhase.SUCCEEDED:
         time.sleep(5)
@@ -118,9 +118,9 @@ def download_backup(connection, backup, backup_dir, ca_file=None,
 def _download_disk(connection, backup, disk, filename, incremental=False,
                    backing_file=None, ca_file=None, secure=False,
                    verify=False):
-    log.info("Downloading %s backup for disk %r to file %r using backing_file %r",
-             "incremental" if incremental else "full", disk.id, filename,
-             backing_file)
+    backup_mode = "incremental" if incremental else "full"
+    log.info("Downloading disk %r %s backup to file %r using backing file %r",
+             disk.id, backup_mode, filename, backing_file)
 
     start = time.monotonic()
 
@@ -142,19 +142,20 @@ def _download_disk(connection, backup, disk, filename, incremental=False,
         )
 
         if verify:
-            expected = _disk_checksum(transfer, ca_file)
-            actual = _backup_checksum(filename)
+            expected = _disk_checksum(disk, transfer, ca_file)
+            actual = _disk_backup_checksum(disk, filename)
             if expected != actual:
                 raise RuntimeError(
                     f"Checksum mismatch: expected {expected} got {actual}")
     finally:
         imagetransfer.finalize_transfer(connection, transfer, disk)
 
-    log.info("Download completed in %d seconds", time.monotonic() - start)
+    log.info("Disk %r %s backup downloaded in %d seconds",
+             disk.id, backup_mode, time.monotonic() - start)
 
 
-def _disk_checksum(transfer, ca_file):
-    log.info("Computing disk checksum")
+def _disk_checksum(disk, transfer, ca_file):
+    log.info("Computing disk %r checksum", disk.id)
 
     start = time.monotonic()
 
@@ -171,17 +172,18 @@ def _disk_checksum(transfer, ca_file):
 
         result = json.loads(res.read())
 
-    log.info("Disk checksum computed in %d seconds", time.monotonic() - start)
+    log.info("Disk %r checksum computed in %d seconds",
+             disk.id, time.monotonic() - start)
 
     return result
 
 
-def _backup_checksum(filename):
-    log.info("Computing backup checksum")
+def _disk_backup_checksum(disk, filename):
+    log.info("Computing disk %r backup checksum", disk.id)
     start = time.monotonic()
     result = client.checksum(filename)
-    log.info("Backup checksum computed in %d seconds",
-             time.monotonic() - start)
+    log.info("Disk %r backup checksum computed in %d seconds",
+             disk.id, time.monotonic() - start)
     return result
 
 

@@ -86,19 +86,21 @@ class Runner:
         self.create_backup_dir()
 
     def test(self):
-        self.run_in_guest(
-            "touch before-full-backup; sync")
+        # Start full backup and stop the VM during the backup. This is
+        # possible only when using hybrid backup.
 
         self.full_backups += 1
         full_backup = backup.start_backup(self.connection, self.vm)
         try:
-            self.run_in_guest(
-                "touch during-full-backup; sync")
+            self.write_data_in_guest(full_backup)
             self.stop_vm()
             self.download_backup(full_backup)
         finally:
             backup.stop_backup(self.connection, full_backup)
         self.passed += 1
+
+        # Run incremental backup, starting the VM during the backup.
+        # This is possible only if using hybrid backup.
 
         self.incremental_backups += 1
         incr_backup = backup.start_backup(
@@ -107,12 +109,39 @@ class Runner:
             from_checkpoint=full_backup.to_checkpoint_id)
         try:
             self.start_vm()
-            self.run_in_guest(
-                "touch during-incremental-backup; sync")
+            self.delete_data_in_guest(full_backup)
+            self.write_data_in_guest(incr_backup)
             self.download_backup(incr_backup)
         finally:
             backup.stop_backup(self.connection, incr_backup)
         self.passed += 1
+
+    def write_data_in_guest(self, backup):
+        log.info("Writing data in vm %s", self.vm.name)
+        start = time.monotonic()
+
+        # The backup should sparsify the zeroes when writing to the backup
+        # file.
+        script = (
+            f"dd if=/dev/zero bs=1M count=1024 of=backup-{backup.id}.data "
+            "oflag=direct conv=fsync"
+        )
+        self.run_in_guest(script)
+
+        log.info("Wrote data in vm %s in %.1f seconds",
+                 self.vm.name, time.monotonic() - start)
+
+    def delete_data_in_guest(self, backup):
+        log.info("Deleting data in vm %s", self.vm.name)
+        start = time.monotonic()
+
+        # The backup should create a zero cluster for the trimmed dirty
+        # clusters without downloading the data.
+        script = f"rm -f backup-{backup.id}.data; fsync; fstrim -av"
+        self.run_in_guest(script)
+
+        log.info("Deleted data in vm %s in %.1f seconds",
+                 self.vm.name, time.monotonic() - start)
 
     def run_in_guest(self, script):
         cmd = [

@@ -54,10 +54,19 @@ testing with lower number of VMs may be needed.
 
 Specify the number of test iterations for every VM. The default is good
 for verifying that everything works. After that you can configure this
-base on the time you want to run the test. On our test system one
+based on the time you want to run the test. On our test system one
 iteration takes about 5 minutes.
 
     iterations: 1
+
+Specify the number of incremental backups per iteration. For each
+iteration, we perform a full backup, and then the specified number of
+incremental backups. During each backup we write 1g of zeroes in the VM,
+and delete the data created by the previous backup. The default is good
+for verifying that everything works. After that you can configure this
+based on the time you want to run the test.
+
+    incremental_backups: 1
 
 ### Troubleshooting
 

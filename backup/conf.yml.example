@@ -48,5 +48,8 @@ vms_count: 8
 # Number of test iterations for every vm.
 iterations: 1
 
+# Number of incremental backup for iteration.
+incremental_backups: 1
+
 # Log verbose debug messages.
 debug: false

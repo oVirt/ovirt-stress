@@ -89,32 +89,46 @@ class Runner:
         # Start full backup and stop the VM during the backup. This is
         # possible only when using hybrid backup.
 
+        log.info("Running full backup for vm %s", self.vm.name)
         self.full_backups += 1
+
         full_backup = backup.start_backup(self.connection, self.vm)
         try:
             self.write_data_in_guest(full_backup)
             self.stop_vm()
+            vm_is_up = False
             self.download_backup(full_backup)
         finally:
             backup.stop_backup(self.connection, full_backup)
+
         self.passed += 1
+        last_backup = full_backup
 
         # Run incremental backup, starting the VM during the backup.
         # This is possible only if using hybrid backup.
 
-        self.incremental_backups += 1
-        incr_backup = backup.start_backup(
-            self.connection,
-            self.vm,
-            from_checkpoint=full_backup.to_checkpoint_id)
-        try:
-            self.start_vm()
-            self.delete_data_in_guest(full_backup)
-            self.write_data_in_guest(incr_backup)
-            self.download_backup(incr_backup)
-        finally:
-            backup.stop_backup(self.connection, incr_backup)
-        self.passed += 1
+        for i in range(1, self.conf["incremental_backups"] + 1):
+            log.info("Running incremental backup %d/%d for vm %s",
+                     i, self.conf["incremental_backups"], self.vm.name)
+            self.incremental_backups += 1
+
+            incr_backup = backup.start_backup(
+                self.connection,
+                self.vm,
+                from_checkpoint=last_backup.to_checkpoint_id)
+            try:
+                if not vm_is_up:
+                    self.start_vm()
+                    vm_is_up = True
+
+                self.delete_data_in_guest(last_backup)
+                self.write_data_in_guest(incr_backup)
+                self.download_backup(incr_backup)
+            finally:
+                backup.stop_backup(self.connection, incr_backup)
+
+            self.passed += 1
+            last_backup = incr_backup
 
     def write_data_in_guest(self, backup):
         log.info("Writing data in vm %s", self.vm.name)

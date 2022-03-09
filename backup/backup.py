@@ -195,10 +195,8 @@ def _get_vm_service(connection, vm):
 
 
 def _get_backup_service(connection, backup):
-    system_service = connection.system_service()
-    vms_service = system_service.vms_service()
-    backups_service = vms_service.vm_service(backup.vm.id).backups_service()
-    return backups_service.backup_service(backup.id)
+    vm_service = _get_vm_service(connection, backup.vm)
+    return vm_service.backups_service().backup_service(backup.id)
 
 
 def _get_backup(backup_service, backup_id):

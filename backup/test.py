@@ -86,12 +86,14 @@ class Runner:
         self.create_backup_dir()
 
     def test(self):
-        self.write_in_guest("before-full-backup")
+        self.run_in_guest(
+            "touch before-full-backup; sync")
 
         self.full_backups += 1
         full_backup = backup.start_backup(self.connection, self.vm)
         try:
-            self.write_in_guest("during-full-backup")
+            self.run_in_guest(
+                "touch during-full-backup; sync")
             self.stop_vm()
             self.download_backup(full_backup)
         finally:
@@ -105,15 +107,14 @@ class Runner:
             from_checkpoint=full_backup.to_checkpoint_id)
         try:
             self.start_vm()
-            self.write_in_guest("during-incremental-backup")
+            self.run_in_guest(
+                "touch during-incremental-backup; sync")
             self.download_backup(incr_backup)
         finally:
             backup.stop_backup(self.connection, incr_backup)
         self.passed += 1
 
-    def write_in_guest(self, filename):
-        log.info("Writing file %r in vm %s", filename, self.vm.name)
-
+    def run_in_guest(self, script):
         cmd = [
             "ssh",
             # Disable host key verification, we trust our vm.
@@ -124,9 +125,7 @@ class Runner:
             "bash", "-s",
         ]
 
-        log.debug("Running command: %s", cmd)
-
-        script = f"touch {filename}; sync"
+        log.debug("Running command %s with input %r", cmd, script)
 
         r = subprocess.run(
             cmd,

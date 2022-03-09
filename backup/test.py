@@ -36,6 +36,8 @@ class Runner:
         self.iteration = None
 
         # Runner stats.
+        self.full_backups = 0
+        self.incremental_backups = 0
         self.passed = 0
         self.failed = 0
         self.errored = 0
@@ -58,8 +60,6 @@ class Runner:
                 self.setup()
                 try:
                     self.test()
-                    log.info("Iteration %d passed", i)
-                    self.passed += 1
                 except Exception:
                     log.exception("Iteration %d failed", i)
                     self.failed += 1
@@ -87,6 +87,8 @@ class Runner:
 
     def test(self):
         self.write_in_guest("before-full-backup")
+
+        self.full_backups += 1
         full_backup = backup.start_backup(self.connection, self.vm)
         try:
             self.write_in_guest("during-full-backup")
@@ -94,7 +96,9 @@ class Runner:
             self.download_backup(full_backup)
         finally:
             backup.stop_backup(self.connection, full_backup)
+        self.passed += 1
 
+        self.incremental_backups += 1
         incr_backup = backup.start_backup(
             self.connection,
             self.vm,
@@ -105,6 +109,7 @@ class Runner:
             self.download_backup(incr_backup)
         finally:
             backup.stop_backup(self.connection, incr_backup)
+        self.passed += 1
 
     def write_in_guest(self, filename):
         log.info("Writing file %r in vm %s", filename, self.vm.name)
@@ -484,10 +489,17 @@ for i in range(conf["vms_count"]):
 for r, t in runners:
     log.debug("Waiting for runner %s", t.name)
     t.join()
+    stats["full_backups"] += r.full_backups
+    stats["incremental_backups"] += r.incremental_backups
     stats["passed"] += r.passed
     stats["failed"] += r.failed
     stats["errored"] += r.errored
 
-log.info("%d failed, %d passed, %d errored in %d seconds",
-         stats["failed"], stats["passed"], stats["errored"],
+log.info("%d full backups, %d incremental backups, %d failed, %d passed, "
+         "%d errored in %d seconds",
+         stats["full_backups"],
+         stats["incremental_backups"],
+         stats["failed"],
+         stats["passed"],
+         stats["errored"],
          time.monotonic() - start)

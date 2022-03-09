@@ -496,10 +496,10 @@ for r, t in runners:
     stats["errored"] += r.errored
 
 log.info("%d full backups, %d incremental backups, %d failed, %d passed, "
-         "%d errored in %d seconds",
+         "%d errored in %.1f minutes",
          stats["full_backups"],
          stats["incremental_backups"],
          stats["failed"],
          stats["passed"],
          stats["errored"],
-         time.monotonic() - start)
+         (time.monotonic() - start) / 60)

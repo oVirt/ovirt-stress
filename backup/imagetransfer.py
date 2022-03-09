@@ -146,8 +146,8 @@ def create_transfer(
         "disk_snapshot" if disk_snapshot else "disk",
         disk_snapshot.id if disk_snapshot else disk.id,
         direction,
-        host,
-        backup,
+        host.name if host else None,
+        backup.id if backup else None,
         shallow,
         timeout_policy,
     )

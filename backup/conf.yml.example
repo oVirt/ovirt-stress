@@ -1,0 +1,55 @@
+# Create conf.yml file based on this example.
+
+# Engine connection
+engine_fqdn: "engine-fqdn"
+engine_username: "admin@internal"
+engine_password: "engine-password"
+engine_cafile: "/etc/pki/vdsm/certs/cacert.pem"
+
+# The template used to create template_name. This template must have the
+# public key of the host running the test.
+template_base: "template-base"
+
+# The template name used to create the test vms.
+# To create this template run:
+#   ansible-playbook setup.yml
+template_name: "backup-template"
+
+# VM name prefix.
+vm_name: "backup-vm"
+
+# Storage domain for creating the template.
+storage_domain: "storage-domain"
+
+# Cluster name for creating the test VMs.
+cluster_name: "cluster-name"
+
+# Directory for storing backups. The file system must have enough space
+# to backup all VMs at the same time.
+backup_dir: "/var/tmp/ovirt-stress/backup"
+
+# Operations timeouts.
+data_center_up_timeout: 600
+create_vm_timeout: 900
+start_vm_timeout: 300
+vm_address_timeout: 120
+stop_vm_timeout: 300
+remove_vm_timeout: 300
+
+# Polling interval for engine queries.
+poll_interval: 5
+
+# Number of second between starting VMs.
+run_delay: 20
+
+# Number of VMs to create.
+vms_count: 8
+
+# Number of test iterations for every vm.
+iterations: 1
+
+# Number of incremental backup for iteration.
+incremental_backups: 1
+
+# Log verbose debug messages.
+debug: false

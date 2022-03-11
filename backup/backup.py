@@ -23,12 +23,19 @@ import imagetransfer
 log = logging.getLogger("backup")
 
 
+class Timeout:
+    """
+    Raised when starting or stopping a backup times out.
+    """
+
+
 def start_backup(connection, vm, from_checkpoint=None, backup_id=None,
-                 description=None):
+                 description=None, timeout=300):
     log.info("Starting backup for vm %r from checkpoint %r",
              vm.name, from_checkpoint)
 
     start = time.monotonic()
+    deadline = start + timeout
 
     vm_service = _get_vm_service(connection, vm)
 
@@ -52,6 +59,10 @@ def start_backup(connection, vm, from_checkpoint=None, backup_id=None,
     backup_service = backups_service.backup_service(backup.id)
 
     while backup.phase != types.BackupPhase.READY:
+        if time.monotonic() > deadline:
+            raise Timeout(
+                f"Timeout waiting until backup {backup.id} is ready")
+
         time.sleep(5)
         backup = _get_backup(backup_service, backup.id)
 
@@ -61,10 +72,11 @@ def start_backup(connection, vm, from_checkpoint=None, backup_id=None,
     return backup
 
 
-def stop_backup(connection, backup):
+def stop_backup(connection, backup, timeout=600):
     log.info("Stopping backup %r", backup.id)
 
     start = time.monotonic()
+    deadline = start + timeout
 
     backup_service = _get_backup_service(connection, backup)
 
@@ -73,7 +85,11 @@ def stop_backup(connection, backup):
     log.debug("Waiting until backup %r stops", backup.id)
 
     while backup.phase != types.BackupPhase.SUCCEEDED:
-        time.sleep(5)
+        if time.monotonic() > deadline:
+            raise Timeout(
+                f"Timeout waiting until backup {backup.id} stops")
+
+        time.sleep(10)
         backup = _get_backup(backup_service, backup.id)
 
     log.info("Backup %r stopped in %d seconds",

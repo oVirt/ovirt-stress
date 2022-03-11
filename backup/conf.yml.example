@@ -35,6 +35,8 @@ start_vm_timeout: 300
 vm_address_timeout: 120
 stop_vm_timeout: 300
 remove_vm_timeout: 300
+start_backup_timeout: 300
+stop_backup_timeout: 600
 
 # Polling interval for engine queries.
 poll_interval: 5

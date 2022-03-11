@@ -92,14 +92,20 @@ class Runner:
         log.info("Running full backup for vm %s", self.vm.name)
         self.full_backups += 1
 
-        full_backup = backup.start_backup(self.connection, self.vm)
+        full_backup = backup.start_backup(
+            self.connection,
+            self.vm,
+            timeout=self.conf["start_backup_timeout"])
         try:
             self.write_data_in_guest(full_backup)
             self.stop_vm()
             vm_is_up = False
             self.download_backup(full_backup)
         finally:
-            backup.stop_backup(self.connection, full_backup)
+            backup.stop_backup(
+                self.connection,
+                full_backup,
+                timeout=self.conf["stop_backup_timeout"])
 
         self.passed += 1
         last_backup = full_backup
@@ -115,7 +121,8 @@ class Runner:
             incr_backup = backup.start_backup(
                 self.connection,
                 self.vm,
-                from_checkpoint=last_backup.to_checkpoint_id)
+                from_checkpoint=last_backup.to_checkpoint_id,
+                timeout=self.conf["start_backup_timeout"])
             try:
                 if not vm_is_up:
                     self.start_vm()
@@ -125,7 +132,10 @@ class Runner:
                 self.write_data_in_guest(incr_backup)
                 self.download_backup(incr_backup)
             finally:
-                backup.stop_backup(self.connection, incr_backup)
+                backup.stop_backup(
+                    self.connection,
+                    incr_backup,
+                    timeout=self.conf["stop_backup_timeout"])
 
             self.passed += 1
             last_backup = incr_backup

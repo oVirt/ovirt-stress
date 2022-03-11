@@ -92,20 +92,14 @@ class Runner:
         log.info("Running full backup for vm %s", self.vm.name)
         self.full_backups += 1
 
-        full_backup = backup.start_backup(
-            self.connection,
-            self.vm,
-            timeout=self.conf["start_backup_timeout"])
+        full_backup = self.start_backup()
         try:
             self.write_data_in_guest(full_backup)
             self.stop_vm()
             vm_is_up = False
             self.download_backup(full_backup)
         finally:
-            backup.stop_backup(
-                self.connection,
-                full_backup,
-                timeout=self.conf["stop_backup_timeout"])
+            self.stop_backup(full_backup)
 
         self.passed += 1
         last_backup = full_backup
@@ -118,11 +112,7 @@ class Runner:
                      i, self.conf["incremental_backups"], self.vm.name)
             self.incremental_backups += 1
 
-            incr_backup = backup.start_backup(
-                self.connection,
-                self.vm,
-                from_checkpoint=last_backup.to_checkpoint_id,
-                timeout=self.conf["start_backup_timeout"])
+            incr_backup = self.start_backup(last_backup)
             try:
                 if not vm_is_up:
                     self.start_vm()
@@ -132,13 +122,24 @@ class Runner:
                 self.write_data_in_guest(incr_backup)
                 self.download_backup(incr_backup)
             finally:
-                backup.stop_backup(
-                    self.connection,
-                    incr_backup,
-                    timeout=self.conf["stop_backup_timeout"])
+                self.stop_backup(incr_backup)
 
             self.passed += 1
             last_backup = incr_backup
+
+    def start_backup(self, last_backup=None):
+        checkpoint = last_backup.to_checkpoint_id if last_backup else None
+        return backup.start_backup(
+            self.connection,
+            self.vm,
+            from_checkpoint=checkpoint,
+            timeout=self.conf["start_backup_timeout"])
+
+    def stop_backup(self, b):
+        backup.stop_backup(
+            self.connection,
+            b,
+            timeout=self.conf["stop_backup_timeout"])
 
     def write_data_in_guest(self, backup):
         log.info("Writing data in vm %s", self.vm.name)

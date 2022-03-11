@@ -42,7 +42,7 @@ stop_backup_timeout: 600
 poll_interval: 5
 
 # Number of second between starting VMs.
-run_delay: 20
+run_delay: 30
 
 # Number of VMs to create.
 vms_count: 8

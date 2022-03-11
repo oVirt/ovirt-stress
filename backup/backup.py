@@ -106,8 +106,10 @@ def download_backup(connection, backup, backup_dir, ca_file=None,
             incremental=incremental,
             backing_file=backing_file,
             ca_file=ca_file,
-            secure=secure,
-            verify=verify)
+            secure=secure)
+
+        if verify:
+            _verify_backup(connection, backup, disk, filename, ca_file)
 
     log.info("Backup %r downloaded in %d seconds",
              backup.id, time.monotonic() - start)
@@ -116,8 +118,7 @@ def download_backup(connection, backup, backup_dir, ca_file=None,
 
 
 def _download_disk(connection, backup, disk, filename, incremental=False,
-                   backing_file=None, ca_file=None, secure=False,
-                   verify=False):
+                   backing_file=None, ca_file=None, secure=False):
     backup_mode = "incremental" if incremental else "full"
     log.info("Downloading disk %r %s backup to file %r using backing file %r",
              disk.id, backup_mode, filename, backing_file)
@@ -140,13 +141,6 @@ def _download_disk(connection, backup, disk, filename, incremental=False,
             backing_file=backing_file,
             backing_format="qcow2",
         )
-
-        if verify:
-            expected = _disk_checksum(disk, transfer, ca_file)
-            actual = _disk_backup_checksum(disk, filename)
-            if expected != actual:
-                raise RuntimeError(
-                    f"Checksum mismatch: expected {expected} got {actual}")
     finally:
         imagetransfer.finalize_transfer(connection, transfer, disk)
 
@@ -154,23 +148,46 @@ def _download_disk(connection, backup, disk, filename, incremental=False,
              disk.id, backup_mode, time.monotonic() - start)
 
 
-def _disk_checksum(disk, transfer, ca_file):
+def _verify_backup(connection, backup, disk, filename, ca_file):
+    log.info("Verifying disk %r backup", disk.id)
+
+    start = time.monotonic()
+
+    expected = _disk_checksum(connection, backup, disk, ca_file)
+    actual = _backup_checksum(filename, disk)
+    if expected != actual:
+        raise RuntimeError(
+            f"Checksum mismatch: expected {expected} got {actual}")
+
+    log.info("Disk %r backup verified in %d seconds",
+             disk.id, time.monotonic() - start)
+
+def _disk_checksum(connection, backup, disk, ca_file):
     log.info("Computing disk %r checksum", disk.id)
 
     start = time.monotonic()
 
-    url = urlparse(transfer.transfer_url)
-    con = http_client.HTTPSConnection(
-        url.netloc,
-        context=ssl.create_default_context(cafile=ca_file))
-    with closing(con):
-        con.request("GET", url.path + "/checksum")
-        res = con.getresponse()
-        if res.status != http_client.OK:
-            error = res.read().decode("utf-8", "replace")
-            raise RuntimeError(f"Error computing checksum: {error}")
+    transfer = imagetransfer.create_transfer(
+        connection,
+        disk,
+        types.ImageTransferDirection.DOWNLOAD,
+        backup=types.Backup(id=backup.id),
+    )
+    try:
+        url = urlparse(transfer.transfer_url)
+        context = ssl.create_default_context(cafile=ca_file)
 
-        result = json.loads(res.read())
+        con = http_client.HTTPSConnection(url.netloc, context=context)
+        with closing(con):
+            con.request("GET", url.path + "/checksum")
+            res = con.getresponse()
+            if res.status != http_client.OK:
+                error = res.read().decode("utf-8", "replace")
+                raise RuntimeError(f"Error computing checksum: {error}")
+
+            result = json.loads(res.read())
+    finally:
+        imagetransfer.finalize_transfer(connection, transfer, disk)
 
     log.info("Disk %r checksum computed in %d seconds",
              disk.id, time.monotonic() - start)
@@ -178,7 +195,7 @@ def _disk_checksum(disk, transfer, ca_file):
     return result
 
 
-def _disk_backup_checksum(disk, filename):
+def _backup_checksum(filename, disk):
     log.info("Computing disk %r backup checksum", disk.id)
     start = time.monotonic()
     result = client.checksum(filename)

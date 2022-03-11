@@ -539,9 +539,14 @@ for i in range(conf["vms_count"]):
     log.debug("Waiting %d seconds before starting next runner", conf["run_delay"])
     time.sleep(conf["run_delay"])
 
-for r, t in runners:
-    log.debug("Waiting for runner %s", t.name)
-    t.join()
+try:
+    for _, t in runners:
+        log.debug("Waiting for runner %s", t.name)
+        t.join()
+except KeyboardInterrupt:
+    log.info("Test interrupted, aborting test without cleanup")
+
+for r, _ in runners:
     stats["full_backups"] += r.full_backups
     stats["incremental_backups"] += r.incremental_backups
     stats["passed"] += r.passed

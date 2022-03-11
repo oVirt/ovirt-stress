@@ -35,12 +35,14 @@ start_vm_timeout: 300
 vm_address_timeout: 120
 stop_vm_timeout: 300
 remove_vm_timeout: 300
+start_backup_timeout: 300
+stop_backup_timeout: 600
 
 # Polling interval for engine queries.
 poll_interval: 5
 
 # Number of second between starting VMs.
-run_delay: 20
+run_delay: 30
 
 # Number of VMs to create.
 vms_count: 8

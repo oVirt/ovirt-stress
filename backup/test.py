@@ -92,14 +92,14 @@ class Runner:
         log.info("Running full backup for vm %s", self.vm.name)
         self.full_backups += 1
 
-        full_backup = backup.start_backup(self.connection, self.vm)
+        full_backup = self.start_backup()
         try:
             self.write_data_in_guest(full_backup)
             self.stop_vm()
             vm_is_up = False
             self.download_backup(full_backup)
         finally:
-            backup.stop_backup(self.connection, full_backup)
+            self.stop_backup(full_backup)
 
         self.passed += 1
         last_backup = full_backup
@@ -112,10 +112,7 @@ class Runner:
                      i, self.conf["incremental_backups"], self.vm.name)
             self.incremental_backups += 1
 
-            incr_backup = backup.start_backup(
-                self.connection,
-                self.vm,
-                from_checkpoint=last_backup.to_checkpoint_id)
+            incr_backup = self.start_backup(last_backup)
             try:
                 if not vm_is_up:
                     self.start_vm()
@@ -125,10 +122,24 @@ class Runner:
                 self.write_data_in_guest(incr_backup)
                 self.download_backup(incr_backup)
             finally:
-                backup.stop_backup(self.connection, incr_backup)
+                self.stop_backup(incr_backup)
 
             self.passed += 1
             last_backup = incr_backup
+
+    def start_backup(self, last_backup=None):
+        checkpoint = last_backup.to_checkpoint_id if last_backup else None
+        return backup.start_backup(
+            self.connection,
+            self.vm,
+            from_checkpoint=checkpoint,
+            timeout=self.conf["start_backup_timeout"])
+
+    def stop_backup(self, b):
+        backup.stop_backup(
+            self.connection,
+            b,
+            timeout=self.conf["stop_backup_timeout"])
 
     def write_data_in_guest(self, backup):
         log.info("Writing data in vm %s", self.vm.name)
@@ -263,7 +274,7 @@ class Runner:
     # Modifying VMs.
 
     def create_vm(self):
-        vm_name = "{}-{}-{}".format(
+        vm_name = "{}-{:02d}-{:02d}".format(
             self.conf["vm_name"], self.index, self.iteration)
         log.info("Creating vm %s", vm_name)
 
@@ -518,7 +529,7 @@ stats = Counter()
 runners = []
 
 for i in range(conf["vms_count"]):
-    name = "run/{}".format(i)
+    name = "run/{:02d}".format(i)
     log.info("Starting runner %s", name)
     r = Runner(i, conf)
     t = threading.Thread(target=r.run, name=name, daemon=True)
@@ -528,9 +539,14 @@ for i in range(conf["vms_count"]):
     log.debug("Waiting %d seconds before starting next runner", conf["run_delay"])
     time.sleep(conf["run_delay"])
 
-for r, t in runners:
-    log.debug("Waiting for runner %s", t.name)
-    t.join()
+try:
+    for _, t in runners:
+        log.debug("Waiting for runner %s", t.name)
+        t.join()
+except KeyboardInterrupt:
+    log.info("Test interrupted, aborting test without cleanup")
+
+for r, _ in runners:
     stats["full_backups"] += r.full_backups
     stats["incremental_backups"] += r.incremental_backups
     stats["passed"] += r.passed

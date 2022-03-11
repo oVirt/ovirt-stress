@@ -274,7 +274,7 @@ class Runner:
     # Modifying VMs.
 
     def create_vm(self):
-        vm_name = "{}-{}-{}".format(
+        vm_name = "{}-{:02d}-{:02d}".format(
             self.conf["vm_name"], self.index, self.iteration)
         log.info("Creating vm %s", vm_name)
 
@@ -529,7 +529,7 @@ stats = Counter()
 runners = []
 
 for i in range(conf["vms_count"]):
-    name = "run/{}".format(i)
+    name = "run/{:02d}".format(i)
     log.info("Starting runner %s", name)
     r = Runner(i, conf)
     t = threading.Thread(target=r.run, name=name, daemon=True)

@@ -152,6 +152,9 @@ def create_transfer(
         timeout_policy,
     )
 
+    start = time.monotonic()
+    deadline = start + timeout
+
     transfer = types.ImageTransfer(
         host=host,
         direction=direction,
@@ -177,7 +180,6 @@ def create_transfer(
     # transfer is canceled, or if finalizing the transfer fails.
 
     transfer_service = transfers_service.image_transfer_service(transfer.id)
-    start = time.monotonic()
 
     while True:
         time.sleep(1)
@@ -203,7 +205,7 @@ def create_transfer(
             raise RuntimeError(
                 f"Unexpected transfer {transfer.id} phase {transfer.phase}")
 
-        if time.monotonic() > start + timeout:
+        if time.monotonic() > deadline:
             log.info("Cancelling transfer %s", transfer.id)
             transfer_service.cancel()
             raise RuntimeError(

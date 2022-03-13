@@ -268,7 +268,7 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
         timeout (float, optional): number of seconds to wait for transfer
             to finalize.
     """
-    log.info("Finalizing transfer %r for disk %r", transfer.id, disk.id)
+    log.info("Finalizing transfer %r", transfer.id)
 
     start = time.monotonic()
 

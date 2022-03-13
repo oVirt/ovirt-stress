@@ -174,8 +174,6 @@ def create_transfer(
 
     transfer = transfers_service.add(transfer)
 
-    log.info("Created transfer %r", transfer.id)
-
     # At this point the transfer owns the disk and will delete the disk if the
     # transfer is canceled, or if finalizing the transfer fails.
 

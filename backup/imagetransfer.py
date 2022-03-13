@@ -182,7 +182,6 @@ def create_transfer(
     transfer_service = transfers_service.image_transfer_service(transfer.id)
 
     while True:
-        time.sleep(1)
         try:
             transfer = transfer_service.get()
         except sdk.NotFoundError:
@@ -210,6 +209,8 @@ def create_transfer(
             transfer_service.cancel()
             raise RuntimeError(
                 f"Timed out waiting for transfer {transfer.id}")
+
+        time.sleep(1)
 
     # Log the transfer host name. This is very useful for troubleshooting.
     transfer.host = connection.follow_link(transfer.host)

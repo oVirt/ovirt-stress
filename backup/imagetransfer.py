@@ -212,7 +212,7 @@ def create_transfer(
     # Log the transfer host name. This is very useful for troubleshooting.
     transfer.host = connection.follow_link(transfer.host)
 
-    log.info("Transfer %r ready on host %r in %d seconds",
+    log.info("Transfer %r ready on host %r in %.1f seconds",
              transfer.id, transfer.host.name, time.monotonic() - start)
 
 
@@ -313,5 +313,5 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
                 f"Timed out waiting for transfer {transfer.id} to finalize, "
                 f"transfer is {transfer.phase}")
 
-    log.info("Transfer %r finalized in %d seconds",
+    log.info("Transfer %r finalized in %.1f seconds",
              transfer.id, time.monotonic() - start)

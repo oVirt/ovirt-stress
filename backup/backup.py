@@ -135,12 +135,6 @@ def download_backup(connection, backup, backup_dir, ca_file=None,
 
 def _download_disk(connection, backup, disk, filename, incremental=False,
                    backing_file=None, ca_file=None, secure=False):
-    backup_mode = "incremental" if incremental else "full"
-    log.info("Downloading disk %r %s backup to file %r using backing file %r",
-             disk.id, backup_mode, filename, backing_file)
-
-    start = time.monotonic()
-
     transfer = imagetransfer.create_transfer(
         connection,
         disk,
@@ -148,6 +142,13 @@ def _download_disk(connection, backup, disk, filename, incremental=False,
         backup=types.Backup(id=backup.id),
     )
     try:
+        backup_mode = "incremental" if incremental else "full"
+        log.info("Downloading disk %r %s backup to %r using backing "
+                 "file %r",
+                 disk.id, backup_mode, filename, backing_file)
+
+        start = time.monotonic()
+
         client.download(
             transfer.transfer_url,
             filename,
@@ -155,13 +156,12 @@ def _download_disk(connection, backup, disk, filename, incremental=False,
             incremental=incremental,
             secure=secure,
             backing_file=backing_file,
-            backing_format="qcow2",
-        )
+            backing_format="qcow2")
+
+        log.info("Disk %r %s backup downloaded in %.1f seconds",
+                 disk.id, backup_mode, time.monotonic() - start)
     finally:
         imagetransfer.finalize_transfer(connection, transfer, disk)
-
-    log.info("Disk %r %s backup downloaded in %.1f seconds",
-             disk.id, backup_mode, time.monotonic() - start)
 
 
 def _verify_backup(connection, backup, disk, filename, ca_file):
@@ -179,10 +179,6 @@ def _verify_backup(connection, backup, disk, filename, ca_file):
              disk.id, time.monotonic() - start)
 
 def _disk_checksum(connection, backup, disk, ca_file):
-    log.info("Computing disk %r checksum", disk.id)
-
-    start = time.monotonic()
-
     transfer = imagetransfer.create_transfer(
         connection,
         disk,
@@ -190,6 +186,9 @@ def _disk_checksum(connection, backup, disk, ca_file):
         backup=types.Backup(id=backup.id),
     )
     try:
+        log.info("Computing disk %r checksum", disk.id)
+        start = time.monotonic()
+
         url = urlparse(transfer.transfer_url)
         context = ssl.create_default_context(cafile=ca_file)
 
@@ -202,11 +201,11 @@ def _disk_checksum(connection, backup, disk, ca_file):
                 raise RuntimeError(f"Error computing checksum: {error}")
 
             result = json.loads(res.read())
+
+        log.info("Disk %r checksum computed in %.1f seconds",
+                 disk.id, time.monotonic() - start)
     finally:
         imagetransfer.finalize_transfer(connection, transfer, disk)
-
-    log.info("Disk %r checksum computed in %.1f seconds",
-             disk.id, time.monotonic() - start)
 
     return result
 

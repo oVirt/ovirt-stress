@@ -66,7 +66,7 @@ def start_backup(connection, vm, from_checkpoint=None, backup_id=None,
         time.sleep(5)
         backup = _get_backup(backup_service, backup.id)
 
-    log.info("Backup %r started in %d seconds",
+    log.info("Backup %r started in %.1f seconds",
              backup.id, time.monotonic() - start)
 
     return backup
@@ -92,7 +92,7 @@ def stop_backup(connection, backup, timeout=600):
         time.sleep(10)
         backup = _get_backup(backup_service, backup.id)
 
-    log.info("Backup %r stopped in %d seconds",
+    log.info("Backup %r stopped in %.1f seconds",
              backup.id, time.monotonic() - start)
 
 
@@ -127,7 +127,7 @@ def download_backup(connection, backup, backup_dir, ca_file=None,
         if verify:
             _verify_backup(connection, backup, disk, filename, ca_file)
 
-    log.info("Backup %r downloaded in %d seconds",
+    log.info("Backup %r downloaded in %.1f seconds",
              backup.id, time.monotonic() - start)
 
     return filename
@@ -160,7 +160,7 @@ def _download_disk(connection, backup, disk, filename, incremental=False,
     finally:
         imagetransfer.finalize_transfer(connection, transfer, disk)
 
-    log.info("Disk %r %s backup downloaded in %d seconds",
+    log.info("Disk %r %s backup downloaded in %.1f seconds",
              disk.id, backup_mode, time.monotonic() - start)
 
 
@@ -175,7 +175,7 @@ def _verify_backup(connection, backup, disk, filename, ca_file):
         raise RuntimeError(
             f"Checksum mismatch: expected {expected} got {actual}")
 
-    log.info("Disk %r backup verified in %d seconds",
+    log.info("Disk %r backup verified in %.1f seconds",
              disk.id, time.monotonic() - start)
 
 def _disk_checksum(connection, backup, disk, ca_file):
@@ -205,7 +205,7 @@ def _disk_checksum(connection, backup, disk, ca_file):
     finally:
         imagetransfer.finalize_transfer(connection, transfer, disk)
 
-    log.info("Disk %r checksum computed in %d seconds",
+    log.info("Disk %r checksum computed in %.1f seconds",
              disk.id, time.monotonic() - start)
 
     return result
@@ -215,7 +215,7 @@ def _backup_checksum(filename, disk):
     log.info("Computing disk %r backup checksum", disk.id)
     start = time.monotonic()
     result = client.checksum(filename)
-    log.info("Disk %r backup checksum computed in %d seconds",
+    log.info("Disk %r backup checksum computed in %.1f seconds",
              disk.id, time.monotonic() - start)
     return result
 

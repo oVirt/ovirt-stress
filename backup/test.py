@@ -513,7 +513,11 @@ class Runner:
     def remove_backup_dir(self):
         if self.backup_dir:
             log.debug("Removing backup directory %r", self.backup_dir)
-            shutil.rmtree(self.backup_dir)
+            try:
+                shutil.rmtree(self.backup_dir)
+            except Exception:
+                log.exception("Error removing %r, manual cleanup needed",
+                              self.backup_dir)
             self.backup_dir = None
 
 

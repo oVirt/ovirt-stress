@@ -72,7 +72,7 @@ class Runner:
                 except Exception:
                     log.exception("Error tearing down")
 
-            log.info("Iteration %d completed in %d seconds",
+            log.info("Iteration %d completed in %.1f seconds",
                      i, time.monotonic() - start)
 
         self.disconnect()
@@ -268,7 +268,7 @@ class Runner:
                     "Timeout waiting until data center {} is up"
                     .format(data_center.name))
 
-        log.info("Data center %s recovered in %d seconds",
+        log.info("Data center %s recovered in %.1f seconds",
                  data_center.name, time.monotonic() - start)
 
     # Modifying VMs.
@@ -301,7 +301,7 @@ class Runner:
             self.vm = None
             raise
 
-        log.info("VM %s created in %d seconds",
+        log.info("VM %s created in %.1f seconds",
                  self.vm.name, time.monotonic() - start)
 
     def start_vm(self):
@@ -316,7 +316,7 @@ class Runner:
 
         self.wait_for_vm_status(types.VmStatus.UP, deadline)
 
-        log.info("VM %s started in %d seconds",
+        log.info("VM %s started in %.1f seconds",
                  self.vm.name, time.monotonic() - start)
 
     def stop_vm(self):
@@ -336,7 +336,7 @@ class Runner:
         elif vm.status != types.VmStatus.DOWN:
             self.try_to_stop_vm(deadline)
 
-        log.info("VM %s stopped in %d seconds",
+        log.info("VM %s stopped in %.1f seconds",
                  self.vm.name, time.monotonic() - start)
 
     def try_to_stop_vm(self, deadline):
@@ -391,7 +391,7 @@ class Runner:
 
             log.debug("VM %s status: %s", self.vm.name, vm.status)
 
-        log.info("VM %s removed in %d seconds",
+        log.info("VM %s removed in %.1f seconds",
                  self.vm.name, time.monotonic() - start)
         self.vm = None
 
@@ -447,7 +447,7 @@ class Runner:
                         for ip in device.ips:
                             if ip.version == types.IpVersion.V4:
                                 log.info(
-                                    "Found vm %s address %r in %d seconds",
+                                    "Found vm %s address %r in %.1f seconds",
                                     self.vm.name, ip.address, time.monotonic() - start)
                                 return ip.address
 
@@ -540,7 +540,7 @@ for i in range(conf["vms_count"]):
     t.start()
     runners.append((r, t))
 
-    log.debug("Waiting %d seconds before starting next runner", conf["run_delay"])
+    log.debug("Waiting %.1f seconds before starting next runner", conf["run_delay"])
     time.sleep(conf["run_delay"])
 
 try:

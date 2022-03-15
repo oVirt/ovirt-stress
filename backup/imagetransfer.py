@@ -152,6 +152,9 @@ def create_transfer(
         timeout_policy,
     )
 
+    start = time.monotonic()
+    deadline = start + timeout
+
     transfer = types.ImageTransfer(
         host=host,
         direction=direction,
@@ -171,16 +174,12 @@ def create_transfer(
 
     transfer = transfers_service.add(transfer)
 
-    log.info("Created transfer %r", transfer.id)
-
     # At this point the transfer owns the disk and will delete the disk if the
     # transfer is canceled, or if finalizing the transfer fails.
 
     transfer_service = transfers_service.image_transfer_service(transfer.id)
-    start = time.monotonic()
 
     while True:
-        time.sleep(1)
         try:
             transfer = transfer_service.get()
         except sdk.NotFoundError:
@@ -203,16 +202,18 @@ def create_transfer(
             raise RuntimeError(
                 f"Unexpected transfer {transfer.id} phase {transfer.phase}")
 
-        if time.monotonic() > start + timeout:
+        if time.monotonic() > deadline:
             log.info("Cancelling transfer %s", transfer.id)
             transfer_service.cancel()
             raise RuntimeError(
                 f"Timed out waiting for transfer {transfer.id}")
 
+        time.sleep(1)
+
     # Log the transfer host name. This is very useful for troubleshooting.
     transfer.host = connection.follow_link(transfer.host)
 
-    log.info("Transfer %r ready on host %r in %d seconds",
+    log.info("Transfer %r ready on host %r in %.1f seconds",
              transfer.id, transfer.host.name, time.monotonic() - start)
 
 
@@ -267,7 +268,7 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
         timeout (float, optional): number of seconds to wait for transfer
             to finalize.
     """
-    log.info("Finalizing transfer %r for disk %r", transfer.id, disk.id)
+    log.info("Finalizing transfer %r", transfer.id)
 
     start = time.monotonic()
 
@@ -313,5 +314,5 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
                 f"Timed out waiting for transfer {transfer.id} to finalize, "
                 f"transfer is {transfer.phase}")
 
-    log.info("Transfer %r finalized in %d seconds",
+    log.info("Transfer %r finalized in %.1f seconds",
              transfer.id, time.monotonic() - start)

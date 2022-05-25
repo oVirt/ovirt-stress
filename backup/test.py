@@ -206,10 +206,12 @@ class Runner:
     def teardown(self):
         if self.vm:
             try:
-                self.remove_backup_dir()
+                if not self.conf["keep_data"]:
+                    self.remove_backup_dir()
                 self.check_data_center()
                 self.stop_vm()
-                self.remove_vm()
+                if not self.conf["keep_data"]:
+                    self.remove_vm()
             finally:
                 self.vm = None
                 self.vm_address = None

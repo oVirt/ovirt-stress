@@ -55,3 +55,9 @@ incremental_backups: 1
 
 # Log verbose debug messages.
 debug: false
+
+# Keep virtual machines and backups after iteration finish. To enabled this you
+# must have enough space on storage for the virtual machine disks, and in the
+# backup_dir for the full and incremental backup. This is mostly useful when
+# running one vm and one iteration for debugging purposes.
+keep_data: false

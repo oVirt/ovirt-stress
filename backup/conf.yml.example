@@ -67,6 +67,9 @@ keep_data: false
 # Values: zeroes, random
 write_method: zeroes
 
+# How much data to write before every backup in MiB.
+write_size_mb: 1024
+
 # Delete data written by previous backup. Trimming the deleted data create
 # dirty zero extent. Backup should skip the download and write zero clusters to
 # the backup file.

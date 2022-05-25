@@ -157,8 +157,10 @@ class Runner:
         else:
             raise RuntimeError(f"Usupported write method: {write_method!r}")
 
+        count = self.conf["write_size_mb"]
+
         script = (
-            f"dd if={src} bs=1M count=1024 of=backup-{backup.id}.data "
+            f"dd if={src} bs=1M count={count} of=backup-{backup.id}.data "
             "oflag=direct conv=fsync"
         )
         self.run_in_guest(script)

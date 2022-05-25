@@ -61,3 +61,8 @@ debug: false
 # backup_dir for the full and incremental backup. This is mostly useful when
 # running one vm and one iteration for debugging purposes.
 keep_data: false
+
+# Delete data written by previous backup. Trimming the deleted data create
+# dirty zero extent. Backup should skip the download and write zero clusters to
+# the backup file.
+delete_previous: true

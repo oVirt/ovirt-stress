@@ -118,7 +118,8 @@ class Runner:
                     self.start_vm()
                     vm_is_up = True
 
-                self.delete_data_in_guest(last_backup)
+                if self.conf["delete_previous"]:
+                    self.delete_data_in_guest(last_backup)
                 self.write_data_in_guest(incr_backup)
                 self.download_backup(incr_backup)
             finally:

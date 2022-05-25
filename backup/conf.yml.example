@@ -62,6 +62,11 @@ debug: false
 # running one vm and one iteration for debugging purposes.
 keep_data: false
 
+# Writing zeroes keeps minimize backup size, since zeroes are converted to zero
+# clusters.  Writing random data create larger backus.
+# Values: zeroes, random
+write_method: zeroes
+
 # Delete data written by previous backup. Trimming the deleted data create
 # dirty zero extent. Backup should skip the download and write zero clusters to
 # the backup file.

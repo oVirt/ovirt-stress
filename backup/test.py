@@ -146,10 +146,19 @@ class Runner:
         log.info("Writing data in vm %s", self.vm.name)
         start = time.monotonic()
 
-        # The backup should sparsify the zeroes when writing to the backup
-        # file.
+        write_method = self.conf["write_method"]
+        if write_method == "zeroes":
+            # The backup will sparsify the zeroes when writing to the backup
+            # file, so incremental backups will be tiny.
+            src = "/dev/zero"
+        elif write_method == "random":
+            # Every incremental will write random data to backup file.
+            src = "/dev/urandom"
+        else:
+            raise RuntimeError(f"Usupported write method: {write_method!r}")
+
         script = (
-            f"dd if=/dev/zero bs=1M count=1024 of=backup-{backup.id}.data "
+            f"dd if={src} bs=1M count=1024 of=backup-{backup.id}.data "
             "oflag=direct conv=fsync"
         )
         self.run_in_guest(script)

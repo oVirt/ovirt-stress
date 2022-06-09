@@ -118,7 +118,8 @@ class Runner:
                     self.start_vm()
                     vm_is_up = True
 
-                self.delete_data_in_guest(last_backup)
+                if self.conf["delete_previous"]:
+                    self.delete_data_in_guest(last_backup)
                 self.write_data_in_guest(incr_backup)
                 self.download_backup(incr_backup)
             finally:
@@ -145,10 +146,21 @@ class Runner:
         log.info("Writing data in vm %s", self.vm.name)
         start = time.monotonic()
 
-        # The backup should sparsify the zeroes when writing to the backup
-        # file.
+        write_method = self.conf["write_method"]
+        if write_method == "zeroes":
+            # The backup will sparsify the zeroes when writing to the backup
+            # file, so incremental backups will be tiny.
+            src = "/dev/zero"
+        elif write_method == "random":
+            # Every incremental will write random data to backup file.
+            src = "/dev/urandom"
+        else:
+            raise RuntimeError(f"Usupported write method: {write_method!r}")
+
+        count = self.conf["write_size_mb"]
+
         script = (
-            f"dd if=/dev/zero bs=1M count=1024 of=backup-{backup.id}.data "
+            f"dd if={src} bs=1M count={count} of=backup-{backup.id}.data "
             "oflag=direct conv=fsync"
         )
         self.run_in_guest(script)
@@ -206,10 +218,12 @@ class Runner:
     def teardown(self):
         if self.vm:
             try:
-                self.remove_backup_dir()
+                if not self.conf["keep_data"]:
+                    self.remove_backup_dir()
                 self.check_data_center()
                 self.stop_vm()
-                self.remove_vm()
+                if not self.conf["keep_data"]:
+                    self.remove_vm()
             finally:
                 self.vm = None
                 self.vm_address = None

@@ -1,0 +1,62 @@
+---
+- name: Create vm
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    conf.yml
+
+  vars:
+    debug_vm_create: true
+    engine_fqdn: "{{ engine_fqdn  }}"
+    engine_user: "{{ engine_username }}"
+    engine_password: "{{ engine_password }}"
+    engine_cafile: "{{ engine_cafile }}"
+
+    vm_profile:
+      template: "{{ template_base }}"
+      cluster: "{{ cluster_name }}"
+      state: stopped
+      disks:
+        # Data disk
+        - size: 3GiB
+          format: cow
+          name: data-01
+          storage_domain: "{{ storage_domain }}"
+          interface: virtio
+    vms:
+      - name: delete-snapshot-chain-vm
+        profile: "{{ vm_profile }}"
+
+  roles:
+    - vm_infra
+  collections:
+    - ovirt.ovirt
+
+- name: Create template
+  hosts: localhost
+  connection: local
+  vars_files:
+    conf.yml
+  tasks:
+    - name: "Obtain SSO token"
+      ovirt.ovirt.ovirt_auth:
+        url: "https://{{engine_fqdn}}/ovirt-engine/api"
+        username: "{{ engine_username }}"
+        password: "{{ engine_password }}"
+        ca_file: "{{ engine_cafile }}"
+
+    - name: "Create template from vm"
+      ovirt.ovirt.ovirt_template:
+        auth: "{{ ovirt_auth }}"
+        cluster: "{{ cluster_name }}"
+        name: "{{ template_name }}"
+        vm: delete-snapshot-chain-vm
+        description: "Template for delete-snapshot-chain vm"
+
+    - name: "Remove vm"
+      ovirt.ovirt.ovirt_vm:
+        state: absent
+        auth: "{{ ovirt_auth }}"
+        name: delete-snapshot-vm

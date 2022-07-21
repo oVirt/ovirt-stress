@@ -29,7 +29,7 @@ cluster_name: "cluster-name"
 
 # Amount of data in megabytes to write to every virtio disk. Writing
 # more data increase the load on the system and slow down the test.
-write_data_mb = 2048
+write_data_mb: 2048
 
 # Operations timeouts.
 data_center_up_timeout: 600

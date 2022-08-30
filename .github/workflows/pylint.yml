@@ -1,0 +1,26 @@
+name: Pylint
+
+on: [push, pull_request]
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        sudo apt install libcurl4-gnutls-dev librtmp-dev
+        python -m pip install --upgrade pip
+        pip install pylint
+        pip install ovirt-imageio
+        pip install ovirt-engine-sdk-python
+        pip install pyyaml
+    - name: Analysing the code with pylint
+      run: pylint $(git ls-files '*.py')

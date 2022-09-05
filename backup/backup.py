@@ -23,7 +23,7 @@ import imagetransfer
 log = logging.getLogger("backup")
 
 
-class Timeout:
+class Timeout(Exception):
     """
     Raised when starting or stopping a backup times out.
     """

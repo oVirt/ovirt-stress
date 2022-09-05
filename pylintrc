@@ -155,6 +155,7 @@ disable=C,I,R,W
 enable=c-extension-no-member,
        unused-import,
        raise-missing-from,
+       import-error,
 
 
 [DESIGN]

@@ -18,7 +18,7 @@ from ovirt_imageio import client
 import ovirtsdk4 as sdk
 import ovirtsdk4.types as types
 
-import imagetransfer
+from . import imagetransfer
 
 log = logging.getLogger("backup")
 

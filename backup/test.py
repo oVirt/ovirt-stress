@@ -12,7 +12,7 @@ from collections import Counter
 import ovirtsdk4 as sdk
 import ovirtsdk4.types as types
 
-import backup
+from . import backup
 
 log = logging.getLogger("test")
 

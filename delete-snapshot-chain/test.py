@@ -2,10 +2,9 @@ import logging
 import threading
 import time
 import uuid
-import yaml
-
 from collections import Counter
 
+import yaml
 import ovirtsdk4 as sdk
 import ovirtsdk4.types as types
 

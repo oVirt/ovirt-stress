@@ -156,6 +156,7 @@ enable=c-extension-no-member,
        unused-import,
        raise-missing-from,
        import-error,
+       attribute-defined-outside-init,
 
 
 [DESIGN]

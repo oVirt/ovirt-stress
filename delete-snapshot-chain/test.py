@@ -68,7 +68,7 @@ class Runner:
 
     def setup(self):
         self.vm = None
-        self.snapshot = None
+        self.snapshots = []
         self.check_data_center()
         self.create_vm()
         self.start_vm()

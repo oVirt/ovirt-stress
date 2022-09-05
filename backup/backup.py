@@ -238,8 +238,8 @@ def _get_backup(backup_service, backup_id):
     """
     try:
         backup = backup_service.get()
-    except sdk.NotFoundError:
-        raise RuntimeError(f"Backup {backup_id} does not exist")
+    except sdk.NotFoundError as e:
+        raise RuntimeError(f"Backup {backup_id} does not exist") from e
 
     if backup.phase == types.BackupPhase.FAILED:
         raise RuntimeError(f"Backup {backup_id} has failed")

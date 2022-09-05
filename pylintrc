@@ -154,6 +154,7 @@ disable=C,I,R,W,raising-non-exception
 # it should appear only once). See also the "--disable" option for examples.
 enable=c-extension-no-member,
        unused-import,
+       raise-missing-from,
 
 
 [DESIGN]

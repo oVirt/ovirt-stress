@@ -182,9 +182,9 @@ def create_transfer(
     while True:
         try:
             transfer = transfer_service.get()
-        except sdk.NotFoundError:
+        except sdk.NotFoundError as e:
             # The system has removed the disk and the transfer.
-            raise RuntimeError(f"Transfer {transfer.id} was removed")
+            raise RuntimeError(f"Transfer {transfer.id} was removed") from e
 
         if transfer.phase == types.ImageTransferPhase.FINISHED_FAILURE:
             # The system will remove the disk and the transfer soon.
@@ -281,7 +281,7 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
         time.sleep(1)
         try:
             transfer = transfer_service.get()
-        except sdk.NotFoundError:
+        except sdk.NotFoundError as e:
             # Old engine (< 4.4.7): since the transfer was already deleted from
             # the database, we can assume that the disk status is already
             # updated, so we can check it only once.
@@ -290,16 +290,16 @@ def finalize_transfer(connection, transfer, disk, timeout=300):
                                 .disk_service(disk.id))
             try:
                 disk = disk_service.get()
-            except sdk.NotFoundError:
+            except sdk.NotFoundError as e:
                 # Disk verification failed and the system removed the disk.
                 raise RuntimeError(
-                    f"Transfer {transfer.id} failed: disk {disk.id} was removed")
+                    f"Transfer {transfer.id} failed: disk {disk.id} was removed") from e
 
             if disk.status == types.DiskStatus.OK:
                 break
 
             raise RuntimeError(
-                f"Transfer {transfer.id} failed: disk {disk.id} status {disk.status}")
+                f"Transfer {transfer.id} failed: disk {disk.id} status {disk.status}") from e
 
         log.debug("Transfer %r in phase %r", transfer.id, transfer.phase)
 

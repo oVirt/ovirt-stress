@@ -146,7 +146,7 @@ confidence=HIGH,
 # --disable=W".
 #
 # Disable *C*onvention, *I*info, *R*efactor, and *W*arnings.
-disable=C,I,R,W,raising-non-exception
+disable=C,I,R,W
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

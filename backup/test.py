@@ -1,4 +1,3 @@
-import argparse
 import logging
 import os
 import shutil
@@ -14,7 +13,6 @@ import ovirtsdk4 as sdk
 import ovirtsdk4.types as types
 
 import backup
-import imagetransfer
 
 log = logging.getLogger("test")
 
